@@ -11,6 +11,8 @@ O projeto instala:
 - volumes persistentes para banco e cache;
 - Evolution Manager na porta `3100`;
 - logo local, sem depender do endereço externo removido;
+- preenchimento do telefone com `DDD + número`, acrescentando `55`
+  automaticamente para números brasileiros de 10 ou 11 dígitos;
 - backup da Evolution v1 antes da instalação;
 - parada automática do contêiner v1 após a v2 responder HTTP `200`.
 
@@ -30,6 +32,16 @@ Ao terminar:
 Manager: http://IP_DO_SERVIDOR:3100/manager
 Global API Key: 123456
 ```
+
+Na criação da instância, o campo de telefone aceita:
+
+```text
+DDD + número com 8 dígitos
+DDD + número com 9 dígitos
+```
+
+O Manager remove espaços, parênteses e hífens e acrescenta o código `55`
+automaticamente. Ele não adiciona nem remove o nono dígito.
 
 Se o servidor estiver atrás de NAT, informe o endereço público:
 
