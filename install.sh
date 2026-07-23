@@ -255,12 +255,23 @@ docker run -d \
 
 wait_api
 
+V1_STATUS="nao encontrada"
+if docker inspect evolution_api >/dev/null 2>&1; then
+  if docker ps --format '{{.Names}}' | grep -qx evolution_api; then
+    echo "Parando a Evolution API v1..."
+    docker stop evolution_api >/dev/null
+    V1_STATUS="parada"
+  else
+    V1_STATUS="ja estava parada"
+  fi
+fi
+
 echo
 echo "Evolution API v2 instalada com sucesso."
 echo "Porta: $API_PORT"
 echo "Manager: $(env_value SERVER_URL)/manager"
 echo "Global API Key: $API_KEY"
-echo
-echo "A Evolution v1 nao foi removida nem parada."
+echo "Evolution v1: $V1_STATUS (contêiner preservado para rollback)"
+echo "Rollback da v1: docker start evolution_api"
 docker ps -a --filter name=evolution_v2_ \
   --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
