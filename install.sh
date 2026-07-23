@@ -235,6 +235,19 @@ for FILE in $MATCHES; do
   sed -i "s#${OLD_LOGO_URL}#/manager/logo-header.jpg#g" "$FILE"
 done
 
+NUMBER_MATCHES="$(
+  grep -RIlF 'number:d.number===""?null:d.number' "$MANAGER_DIR.new" 2>/dev/null || true
+)"
+if [ -z "$NUMBER_MATCHES" ]; then
+  echo "ERRO: rotina original do campo de numero nao encontrada no Manager."
+  exit 1
+fi
+for FILE in $NUMBER_MATCHES; do
+  sed -i \
+    's@number:d\.number===""?null:d\.number@number:d.number===""?null:(d.number.replace(/[^0-9]/g,"").length===10||d.number.replace(/[^0-9]/g,"").length===11?"55"+d.number.replace(/[^0-9]/g,""):d.number.replace(/[^0-9]/g,""))@g' \
+    "$FILE"
+done
+
 rm -rf "$MANAGER_DIR.previous"
 if [ -d "$MANAGER_DIR" ]; then
   mv "$MANAGER_DIR" "$MANAGER_DIR.previous"
