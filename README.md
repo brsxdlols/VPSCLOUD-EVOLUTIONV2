@@ -11,7 +11,8 @@ O projeto instala:
 - volumes persistentes para banco e cache;
 - Evolution Manager na porta `3100`;
 - logo local, sem depender do endereço externo removido;
-- backup da Evolution v1 antes da instalação.
+- backup da Evolution v1 antes da instalação;
+- parada automática do contêiner v1 após a v2 responder HTTP `200`.
 
 ## Instalação
 
@@ -38,22 +39,31 @@ EVOLUTION_SERVER_URL=http://IP_PUBLICO:3100 sh /root/install-evolution-v2.sh
 
 ## Migração da v1
 
-O instalador não para nem remove o contêiner v1. A v1 pode continuar na porta
-`7070` enquanto a v2 é validada na porta `3100`.
+O instalador faz backup da Evolution v1 e, depois que a API v2 responde HTTP
+`200`, executa:
 
-Antes de alterar o MK-Auth:
+```bash
+docker stop evolution_api
+```
+
+O contêiner e a imagem da v1 não são apagados. Após a instalação:
 
 1. abra o Manager da v2;
-2. crie a instância com o mesmo nome configurado no MK-Auth;
+2. crie a instância desejada;
 3. conecte o WhatsApp pelo QR Code;
 4. altere no MK-Auth o servidor para a porta `3100`;
-5. faça um envio controlado;
-6. somente depois pare a v1.
+5. faça um envio controlado.
 
 Os backups da v1 são salvos em:
 
 ```text
 /root/evolution-v1-backups/
+```
+
+Para um rollback imediato:
+
+```bash
+docker start evolution_api
 ```
 
 ## Contêineres e volumes
