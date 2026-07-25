@@ -43,6 +43,9 @@ DDD + número com 9 dígitos
 O Manager remove espaços, parênteses e hífens e acrescenta o código `55`
 automaticamente. Ele não adiciona nem remove o nono dígito.
 
+O campo de telefone é opcional. O botão de copiar token possui fallback compatível
+com acesso HTTP, usado normalmente nos MK-Auth sem HTTPS.
+
 Se o servidor estiver atrás de NAT, informe o endereço público:
 
 ```bash
