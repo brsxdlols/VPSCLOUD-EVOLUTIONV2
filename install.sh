@@ -244,10 +244,22 @@ if [ -z "$NUMBER_MATCHES" ]; then
 fi
 for FILE in $NUMBER_MATCHES; do
   sed -i \
-    's@number:d\.number===""?null:d\.number@number:d.number===""?null:(d.number.replace(/[^0-9]/g,"").length===10||d.number.replace(/[^0-9]/g,"").length===11?"55"+d.number.replace(/[^0-9]/g,""):d.number.replace(/[^0-9]/g,""))@g' \
+    's@number:d\.number===""?null:d\.number@number:d.number==null||d.number===""?null:(d.number.replace(/[^0-9]/g,"").length===10||d.number.replace(/[^0-9]/g,"").length===11?"55"+d.number.replace(/[^0-9]/g,""):d.number.replace(/[^0-9]/g,""))@g' \
     "$FILE"
 done
 
+COPY_MATCHES="$(
+  grep -RIlF 'const x8=e=>{navigator.clipboard.writeText(e),Z.success("Copiado para a área de transferência")};' "$MANAGER_DIR.new" 2>/dev/null || true
+)"
+if [ -z "$COPY_MATCHES" ]; then
+  echo "ERRO: rotina original do botao copiar nao encontrada no Manager."
+  exit 1
+fi
+for FILE in $COPY_MATCHES; do
+  sed -i \
+    's@const x8=e=>{navigator.clipboard.writeText(e),Z.success("Copiado para a área de transferência")};@const x8=e=>{const t=()=>{const n=document.createElement("textarea");n.value=e,n.style.position="fixed",n.style.opacity="0",document.body.appendChild(n),n.focus(),n.select();const r=document.execCommand("copy");n.remove(),r?Z.success("Copiado para a área de transferência"):Z.error("Não foi possível copiar")};navigator.clipboard\&\&window.isSecureContext?navigator.clipboard.writeText(e).then(()=>Z.success("Copiado para a área de transferência")).catch(t):t()};@g' \
+    "$FILE"
+done
 rm -rf "$MANAGER_DIR.previous"
 if [ -d "$MANAGER_DIR" ]; then
   mv "$MANAGER_DIR" "$MANAGER_DIR.previous"
