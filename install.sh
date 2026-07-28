@@ -244,7 +244,7 @@ if [ -z "$NUMBER_MATCHES" ]; then
 fi
 for FILE in $NUMBER_MATCHES; do
   sed -i \
-    's@number:d\.number===""?null:d\.number@number:d.number==null||d.number===""?null:(d.number.replace(/[^0-9]/g,"").length===10||d.number.replace(/[^0-9]/g,"").length===11?"55"+d.number.replace(/[^0-9]/g,""):d.number.replace(/[^0-9]/g,""))@g' \
+    's@number:d\.number===""?null:d\.number@...(d.number==null||d.number===""?{}:{number:d.number.replace(/[^0-9]/g,"").length===10||d.number.replace(/[^0-9]/g,"").length===11?"55"+d.number.replace(/[^0-9]/g,""):d.number.replace(/[^0-9]/g,"")})@g' \
     "$FILE"
 done
 
