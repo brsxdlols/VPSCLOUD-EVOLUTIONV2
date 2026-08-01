@@ -23,8 +23,8 @@ fi
 find /var/lib/docker/containers -type f -name '*-json.log' -size +20M 2>/dev/null | while IFS= read -r LOG_FILE; do trim_file "$LOG_FILE" 20971520 10485760; done
 trim_file /var/log/mkauth_radius_ppp_reconcile.log 52428800 10485760
 trim_file /var/log/docker_check.log 52428800 10485760
-docker container prune -f --filter until=168h >/dev/null 2>&1 || true
-docker image prune -f --filter until=168h >/dev/null 2>&1 || true
+# Conteineres parados sao preservados para permitir rollback da Evolution v1.
+docker image prune -a -f --filter until=168h >/dev/null 2>&1 || true
 docker builder prune -f --filter until=168h >/dev/null 2>&1 || true
 if [ -d "$BACKUP_ROOT" ]; then
   ls -1dt "$BACKUP_ROOT"/v1-* 2>/dev/null | sed -n '3,$p' | while IFS= read -r OLD_BACKUP; do
