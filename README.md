@@ -71,6 +71,26 @@ evolution_v2_postgres_data
 evolution_v2_redis_data
 ```
 
+## Limpeza automática de armazenamento
+
+Os dois instaladores configuram uma manutenção diária às `03:25`. Por padrão,
+ela mantém 7 dias de mensagens no PostgreSQL, limita o crescimento dos logs,
+remove recursos Docker não utilizados há 7 dias, limpa o cache do APT e mantém
+somente os dois backups mais recentes da Evolution v1.
+
+Os volumes Docker ativos, as instâncias e as configurações não são apagados. A
+retenção pode ser alterada durante a instalação:
+
+```bash
+EVOLUTION_RETENTION_DAYS=15 sh /root/install-evolution-v2.sh
+```
+
+O cron e o relatório ficam em:
+
+```text
+/etc/cron.d/vpscloud-evolution-cleanup
+/var/log/vpscloud-evolution-cleanup.log
+```
 ## Observação de segurança
 
 A chave global `123456` foi definida como padrão operacional solicitado. Recomenda-se restringir a porta escolhida por firewall a endereços confiáveis.
