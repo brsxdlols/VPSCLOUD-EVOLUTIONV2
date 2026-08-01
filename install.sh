@@ -39,29 +39,17 @@ EOF
   chmod 644 /etc/cron.d/vpscloud-evolution-cleanup
   /usr/local/sbin/vpscloud-evolution-cleanup >> /var/log/vpscloud-evolution-cleanup.log 2>&1 || true
 }
-backup_v1() {
-  if ! docker inspect evolution_api >/dev/null 2>&1; then
-    return
+remove_v1() {
+  V1_IMAGE=""
+  if docker inspect evolution_api >/dev/null 2>&1; then
+    V1_IMAGE="$(docker inspect --format '{{.Config.Image}}' evolution_api)"
+    echo "Parando e removendo completamente a Evolution v1..."
+    docker rm -f -v evolution_api >/dev/null
   fi
-
-  STAMP="$(date +%Y%m%d-%H%M%S)"
-  BACKUP_DIR="$BACKUP_ROOT/v1-$STAMP"
-  mkdir -p "$BACKUP_DIR"
-  chmod 700 "$BACKUP_DIR"
-
-  docker inspect evolution_api > "$BACKUP_DIR/evolution_api.inspect.json"
-  docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' evolution_api \
-    > "$BACKUP_DIR/evolution_api.env"
-  chmod 600 "$BACKUP_DIR/evolution_api.inspect.json" "$BACKUP_DIR/evolution_api.env"
-
-  if docker exec evolution_api test -d /evolution >/dev/null 2>&1; then
-    docker cp evolution_api:/evolution "$BACKUP_DIR/evolution"
-  fi
-
-  printf '%s\n' "$BACKUP_DIR" > "$BACKUP_ROOT/LAST_BACKUP"
-  echo "Backup da v1: $BACKUP_DIR"
+  if [ -n "$V1_IMAGE" ]; then docker image rm "$V1_IMAGE" >/dev/null 2>&1 || true; fi
+  rm -rf "$BACKUP_ROOT"
+  echo "Evolution v1, imagem e backups removidos."
 }
-
 create_env() {
   if [ -s "$ENV_FILE" ]; then
     return
@@ -177,7 +165,6 @@ wait_api() {
   exit 1
 }
 
-backup_v1
 create_env
 
 echo "Baixando imagens..."
@@ -304,23 +291,13 @@ wait_api
 
 install_daily_cleanup
 
-V1_STATUS="nao encontrada"
-if docker inspect evolution_api >/dev/null 2>&1; then
-  if docker ps --format '{{.Names}}' | grep -qx evolution_api; then
-    echo "Parando a Evolution API v1..."
-    docker stop evolution_api >/dev/null
-    V1_STATUS="parada"
-  else
-    V1_STATUS="ja estava parada"
-  fi
-fi
+remove_v1
 
 echo
 echo "Evolution API v2 instalada com sucesso."
 echo "Porta: $API_PORT"
 echo "Manager: $(env_value SERVER_URL)/manager"
 echo "Global API Key: $API_KEY"
-echo "Evolution v1: $V1_STATUS (contêiner preservado para rollback)"
-echo "Rollback da v1: docker start evolution_api"
+echo "Evolution v1: removida completamente"
 docker ps -a --filter name=evolution_v2_ \
   --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
