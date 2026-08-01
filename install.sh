@@ -20,6 +20,7 @@ API_PORT="${EVOLUTION_PORT:-3100}"
 API_KEY="123456"
 LOGO_URL="https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/assets/evolution-logo-header.jpg"
 OLD_LOGO_URL="https://evolution-api.com/files/evo/evolution-logo-white.svg"
+CLEANUP_URL="https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/cleanup.sh"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERRO: Docker nao encontrado."
@@ -29,6 +30,15 @@ fi
 mkdir -p "$PROJECT_DIR" "$BACKUP_ROOT"
 chmod 700 "$PROJECT_DIR" "$BACKUP_ROOT"
 
+install_daily_cleanup() {
+  curl -fsSL "$CLEANUP_URL" -o /usr/local/sbin/vpscloud-evolution-cleanup
+  chmod 700 /usr/local/sbin/vpscloud-evolution-cleanup
+  cat > /etc/cron.d/vpscloud-evolution-cleanup <<EOF
+25 3 * * * root EVOLUTION_RETENTION_DAYS=${EVOLUTION_RETENTION_DAYS:-7} /usr/local/sbin/vpscloud-evolution-cleanup >> /var/log/vpscloud-evolution-cleanup.log 2>&1
+EOF
+  chmod 644 /etc/cron.d/vpscloud-evolution-cleanup
+  /usr/local/sbin/vpscloud-evolution-cleanup >> /var/log/vpscloud-evolution-cleanup.log 2>&1 || true
+}
 backup_v1() {
   if ! docker inspect evolution_api >/dev/null 2>&1; then
     return
@@ -185,6 +195,9 @@ docker volume inspect "$REDIS_VOLUME" >/dev/null 2>&1 ||
 docker rm -f "$API_CONTAINER" "$PG_CONTAINER" "$REDIS_CONTAINER" >/dev/null 2>&1 || true
 
 docker run -d \
+  --log-driver json-file \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
   --name "$PG_CONTAINER" \
   --restart always \
   --network "$NETWORK" \
@@ -195,6 +208,9 @@ docker run -d \
   "$PG_IMAGE" >/dev/null
 
 docker run -d \
+  --log-driver json-file \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
   --name "$REDIS_CONTAINER" \
   --restart always \
   --network "$NETWORK" \
@@ -205,6 +221,9 @@ docker run -d \
 wait_postgres_redis
 
 docker run -d \
+  --log-driver json-file \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
   --name "$API_CONTAINER" \
   --restart on-failure \
   --network "$NETWORK" \
@@ -269,6 +288,9 @@ chmod -R a+rX "$MANAGER_DIR"
 
 docker rm -f "$API_CONTAINER" >/dev/null
 docker run -d \
+  --log-driver json-file \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
   --name "$API_CONTAINER" \
   --restart on-failure \
   --network "$NETWORK" \
@@ -279,6 +301,8 @@ docker run -d \
   node ./dist/src/main.js >/dev/null
 
 wait_api
+
+install_daily_cleanup
 
 V1_STATUS="nao encontrada"
 if docker inspect evolution_api >/dev/null 2>&1; then
