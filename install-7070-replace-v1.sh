@@ -41,16 +41,17 @@ EOF
 }
 remove_v1() {
   V1_IMAGE=""
-  if docker inspect evolution_api >/dev/null 2>&1; then
+  if docker container inspect evolution_api >/dev/null 2>&1; then
     V1_IMAGE="$(docker inspect --format '{{.Config.Image}}' evolution_api)"
     echo "Parando e removendo completamente a Evolution v1..."
-    docker rm -f -v evolution_api >/dev/null
+    docker rm -f evolution_api >/dev/null
   fi
-  if [ -n "$V1_IMAGE" ]; then docker image rm "$V1_IMAGE" >/dev/null 2>&1 || true; fi
-  echo "Evolution v1 removida; backups preservados em $BACKUP_ROOT."
+  # Keep the legacy image available for rollback.
+  echo "Container Evolution v1 removido; imagem e backups preservados."
 }
 create_env() {
   if [ -s "$ENV_FILE" ]; then
+    chmod 600 "$ENV_FILE"
     return
   fi
 
@@ -160,8 +161,7 @@ wait_api() {
     i=$((i + 1))
     sleep 2
   done
-  echo "ERRO: Evolution API nao respondeu HTTP 200."
-  docker logs --tail 100 "$API_CONTAINER" 2>&1 || true
+  echo "ERRO: Evolution API nao respondeu HTTP 200. Consulte logs localmente, pois podem conter dados sensiveis."
   exit 1
 }
 
@@ -221,8 +221,6 @@ docker run -d \
   redis-server --appendonly yes --requirepass "$(env_value REDIS_PASSWORD)" >/dev/null
 
 wait_postgres_redis
-
-remove_v1
 
 docker run -d \
   --log-driver json-file \
@@ -306,13 +304,16 @@ docker run -d \
 
 wait_api
 
+# Only retire the legacy v1 container after v2 is healthy.
+remove_v1
+
 install_daily_cleanup
 
 echo
 echo "Evolution API v2 instalada com sucesso."
 echo "Porta: $API_PORT"
 echo "Manager: $(env_value SERVER_URL)/manager"
-echo "Global API Key: $API_KEY"
-echo "Evolution v1: container antigo removido na migracao (backups preservados)"
+echo "Global API Key: consulte AUTHENTICATION_API_KEY em $ENV_FILE (arquivo protegido)"
+echo "Evolution v1: container antigo removido apos validacao; imagem e backups preservados"
 docker ps -a --filter name=evolution_v2_ \
   --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
