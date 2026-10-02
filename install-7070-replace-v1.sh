@@ -13,11 +13,11 @@ NETWORK="evolution_v2_net"
 PG_VOLUME="evolution_v2_postgres_data"
 REDIS_VOLUME="evolution_v2_redis_data"
 
-API_IMAGE="evoapicloud/evolution-api:v2.3.4"
+API_IMAGE="evoapicloud/evolution-api:v2.3.7"
 PG_IMAGE="postgres:15-alpine"
 REDIS_IMAGE="redis:7.4-alpine"
 API_PORT="${EVOLUTION_PORT:-7070}"
-API_KEY="123456"
+API_KEY=""
 LOGO_URL="https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/assets/evolution-logo-header.jpg"
 OLD_LOGO_URL="https://evolution-api.com/files/evo/evolution-logo-white.svg"
 CLEANUP_URL="https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/cleanup.sh"
@@ -41,20 +41,21 @@ EOF
 }
 remove_v1() {
   V1_IMAGE=""
-  if docker inspect evolution_api >/dev/null 2>&1; then
+  if docker container inspect evolution_api >/dev/null 2>&1; then
     V1_IMAGE="$(docker inspect --format '{{.Config.Image}}' evolution_api)"
     echo "Parando e removendo completamente a Evolution v1..."
-    docker rm -f -v evolution_api >/dev/null
+    docker rm -f evolution_api >/dev/null
   fi
-  if [ -n "$V1_IMAGE" ]; then docker image rm "$V1_IMAGE" >/dev/null 2>&1 || true; fi
-  rm -rf "$BACKUP_ROOT"
-  echo "Evolution v1, imagem e backups removidos."
+  # Keep the legacy image available for rollback.
+  echo "Container Evolution v1 removido; imagem e backups preservados."
 }
 create_env() {
   if [ -s "$ENV_FILE" ]; then
+    chmod 600 "$ENV_FILE"
     return
   fi
 
+  API_KEY="$(openssl rand -hex 24)"
   DB_PASSWORD="$(openssl rand -hex 24)"
   REDIS_PASSWORD="$(openssl rand -hex 24)"
   HOST_ADDRESS="$(
@@ -85,7 +86,7 @@ DATABASE_CONNECTION_URI=postgresql://evolution:${DB_PASSWORD}@${PG_CONTAINER}:54
 DATABASE_CONNECTION_CLIENT_NAME=mkauth_evolution_v2
 DATABASE_SAVE_DATA_INSTANCE=true
 DATABASE_SAVE_DATA_NEW_MESSAGE=true
-DATABASE_SAVE_MESSAGE_UPDATE=true
+DATABASE_SAVE_MESSAGE_UPDATE=false
 DATABASE_SAVE_DATA_CONTACTS=true
 DATABASE_SAVE_DATA_CHATS=true
 DATABASE_SAVE_DATA_HISTORIC=true
@@ -160,12 +161,26 @@ wait_api() {
     i=$((i + 1))
     sleep 2
   done
-  echo "ERRO: Evolution API nao respondeu HTTP 200."
-  docker logs --tail 100 "$API_CONTAINER" 2>&1 || true
+  echo "ERRO: Evolution API nao respondeu HTTP 200. Consulte logs localmente, pois podem conter dados sensiveis."
   exit 1
 }
 
+# This script installs on a fresh host or migrates from v1 only.
+# Existing v2 installations require a separate, backup-aware upgrade procedure.
+for existing in "$API_CONTAINER" "$PG_CONTAINER" "$REDIS_CONTAINER"; do
+  if docker container inspect "$existing" >/dev/null 2>&1; then
+    echo "ERRO: ja existe a instalacao Evolution v2 ($existing)."
+    echo "Este instalador nao sobrescreve instalacoes existentes. Use um procedimento de atualizacao com backup."
+    exit 1
+  fi
+done
+
 create_env
+API_KEY="$(env_value AUTHENTICATION_API_KEY)"
+if [ -z "$API_KEY" ]; then
+  echo "ERRO: AUTHENTICATION_API_KEY ausente no arquivo de configuracao."
+  exit 1
+fi
 
 echo "Baixando imagens..."
 docker pull "$PG_IMAGE"
@@ -179,7 +194,7 @@ docker volume inspect "$PG_VOLUME" >/dev/null 2>&1 ||
 docker volume inspect "$REDIS_VOLUME" >/dev/null 2>&1 ||
   docker volume create "$REDIS_VOLUME" >/dev/null
 
-docker rm -f "$API_CONTAINER" "$PG_CONTAINER" "$REDIS_CONTAINER" >/dev/null 2>&1 || true
+
 
 docker run -d \
   --log-driver json-file \
@@ -206,8 +221,6 @@ docker run -d \
   redis-server --appendonly yes --requirepass "$(env_value REDIS_PASSWORD)" >/dev/null
 
 wait_postgres_redis
-
-remove_v1
 
 docker run -d \
   --log-driver json-file \
@@ -291,13 +304,16 @@ docker run -d \
 
 wait_api
 
+# Only retire the legacy v1 container after v2 is healthy.
+remove_v1
+
 install_daily_cleanup
 
 echo
 echo "Evolution API v2 instalada com sucesso."
 echo "Porta: $API_PORT"
 echo "Manager: $(env_value SERVER_URL)/manager"
-echo "Global API Key: $API_KEY"
-echo "Evolution v1: removida completamente"
+echo "Global API Key: consulte AUTHENTICATION_API_KEY em $ENV_FILE (arquivo protegido)"
+echo "Evolution v1: container antigo removido apos validacao; imagem e backups preservados"
 docker ps -a --filter name=evolution_v2_ \
   --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
