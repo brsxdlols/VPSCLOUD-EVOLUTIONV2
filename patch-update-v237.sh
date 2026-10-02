@@ -17,16 +17,25 @@ STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP=/root/backup-evolution/patch-v237-$STAMP
 OLD=${API}_rollback_$STAMP
 OLD_STOPPED=0
+OLD_RENAMED=0
 NEW_CREATED=0
+ENV_CHANGED=0
+ROLLBACK_ARMED=0
 
 die() { echo "ERRO: $*" >&2; exit 1; }
 get_env() { sed -n "s/^$1=//p" "$ENV_FILE" | head -n 1; }
 running() { [ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null || true)" = true ]; }
 rollback() {
+  [ "$ROLLBACK_ARMED" -eq 1 ] || return 0
   echo "Falha no patch. Tentando restaurar o container antigo..."
   if [ "$NEW_CREATED" -eq 1 ]; then docker rm -f "$API" >/dev/null 2>&1 || true; fi
-  if [ "$OLD_STOPPED" -eq 1 ]; then
+  if [ "$ENV_CHANGED" -eq 1 ]; then
+    cp -p "$BACKUP/evolution-v2.env" "$ENV_FILE" || true
+  fi
+  if [ "$OLD_RENAMED" -eq 1 ]; then
     docker rename "$OLD" "$API" >/dev/null 2>&1 || true
+  fi
+  if [ "$OLD_STOPPED" -eq 1 ]; then
     docker start "$API" >/dev/null 2>&1 || true
   fi
 }
@@ -48,7 +57,11 @@ docker inspect "$API" -f '{{range .Mounts}}{{if eq .Destination "/evolution/mana
 [ "$(docker inspect -f '{{.Config.Image}}' "$API")" != "$IMAGE" ] || {
   echo "API ja utiliza $IMAGE. Nada a atualizar."; trap - 0; exit 0;
 }
-[ "$(get_env DATABASE_SAVE_MESSAGE_UPDATE)" = false ] || die "DATABASE_SAVE_MESSAGE_UPDATE deve ser false; revise o .env antes de atualizar."
+UPDATE_SETTING=$(get_env DATABASE_SAVE_MESSAGE_UPDATE)
+case "$UPDATE_SETTING" in
+  true|false) ;;
+  *) die "Valor DATABASE_SAVE_MESSAGE_UPDATE inesperado: configure true ou false." ;;
+esac
 KEY=$(get_env AUTHENTICATION_API_KEY)
 [ -n "$KEY" ] || die "Chave de API nao encontrada."
 [ -n "$(get_env DATABASE_PASSWORD)" ] || die "Senha PostgreSQL nao encontrada."
@@ -67,9 +80,18 @@ docker exec "$PG" pg_dump -U evolution -d evolution_api -Fc > "$BACKUP/postgres.
 echo "Baixando imagem $IMAGE..."
 docker pull "$IMAGE"
 echo "Iniciando troca controlada somente da API..."
+ROLLBACK_ARMED=1
+if [ "$UPDATE_SETTING" = true ]; then
+  sed 's/^DATABASE_SAVE_MESSAGE_UPDATE=true$/DATABASE_SAVE_MESSAGE_UPDATE=false/' "$ENV_FILE" > "$BACKUP/env-new"
+  cat "$BACKUP/env-new" > "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  ENV_CHANGED=1
+  echo "DATABASE_SAVE_MESSAGE_UPDATE alterado para false (original salvo)."
+fi
 docker stop "$API" >/dev/null || die "Nao foi possivel parar a API."
 OLD_STOPPED=1
 docker rename "$API" "$OLD" || die "Falha ao renomear API antiga."
+OLD_RENAMED=1
 docker run -d \
   --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 \
   --name "$API" --restart on-failure \
@@ -89,6 +111,7 @@ while [ "$i" -lt 90 ]; do
       echo "Backup PostgreSQL e configuracoes: $BACKUP"
       echo "Redis e PostgreSQL nao foram reiniciados."
       echo "Teste o envio e recebimento pelo Evolution Manager e MK-AUTH."
+      ROLLBACK_ARMED=0
       trap - 0
       exit 0
     fi
