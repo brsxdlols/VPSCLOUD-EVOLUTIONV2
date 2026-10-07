@@ -257,28 +257,28 @@ for FILE in $MATCHES; do
 done
 
 NUMBER_MATCHES="$(
-  grep -RIlF 'number:d.number===""?null:d.number' "$MANAGER_DIR.new" 2>/dev/null || true
+  grep -RIlF 'number:h.number===""?null:h.number' "$MANAGER_DIR.new" 2>/dev/null || true
 )"
 if [ -z "$NUMBER_MATCHES" ]; then
   echo "ERRO: rotina original do campo de numero nao encontrada no Manager."
   exit 1
 fi
 for FILE in $NUMBER_MATCHES; do
-  sed -i \
-    's@number:d\.number===""?null:d\.number@...(d.number==null||d.number===""?{}:{number:d.number.replace(/[^0-9]/g,"").length===10||d.number.replace(/[^0-9]/g,"").length===11?"55"+d.number.replace(/[^0-9]/g,""):d.number.replace(/[^0-9]/g,"")})@g' \
+  sed -i \\
+    's@number:h\\.number===""?null:h\\.number@...(h.number==null||h.number===""?{}:{number:h.number.replace(/[^0-9]/g,"").length===10||h.number.replace(/[^0-9]/g,"").length===11?"55"+h.number.replace(/[^0-9]/g,""):h.number.replace(/[^0-9]/g,"")})@g' \\
     "$FILE"
 done
 
 COPY_MATCHES="$(
-  grep -RIlF 'const x8=e=>{navigator.clipboard.writeText(e),Z.success("Copiado para a área de transferência")};' "$MANAGER_DIR.new" 2>/dev/null || true
+  grep -RIlF 'const U5=e=>{navigator.clipboard.writeText(e),me.success("Copiado para a área de transferência")};' "$MANAGER_DIR.new" 2>/dev/null || true
 )"
 if [ -z "$COPY_MATCHES" ]; then
   echo "ERRO: rotina original do botao copiar nao encontrada no Manager."
   exit 1
 fi
 for FILE in $COPY_MATCHES; do
-  sed -i \
-    's@const x8=e=>{navigator.clipboard.writeText(e),Z.success("Copiado para a área de transferência")};@const x8=e=>{const t=()=>{const n=document.createElement("textarea");n.value=e,n.style.position="fixed",n.style.opacity="0",document.body.appendChild(n),n.focus(),n.select();const r=document.execCommand("copy");n.remove(),r?Z.success("Copiado para a área de transferência"):Z.error("Não foi possível copiar")};navigator.clipboard\&\&window.isSecureContext?navigator.clipboard.writeText(e).then(()=>Z.success("Copiado para a área de transferência")).catch(t):t()};@g' \
+  sed -i \\
+    's@const U5=e=>{navigator.clipboard.writeText(e),me.success("Copiado para a área de transferência")};@const U5=e=>{const t=()=>{const n=document.createElement("textarea");n.value=e,n.style.position="fixed",n.style.opacity="0",document.body.appendChild(n),n.focus(),n.select();const r=document.execCommand("copy");n.remove(),r?me.success("Copiado para a área de transferência"):me.error("Não foi possível copiar")};navigator.clipboard\\&\\&window.isSecureContext?navigator.clipboard.writeText(e).then(()=>me.success("Copiado para a área de transferência")).catch(t):t()};@g' \\
     "$FILE"
 done
 rm -rf "$MANAGER_DIR.previous"
