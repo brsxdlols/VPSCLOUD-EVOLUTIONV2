@@ -56,7 +56,7 @@ create_env() {
     return
   fi
 
-  API_KEY="$(openssl rand -hex 24)"
+  API_KEY="123456"
   DB_PASSWORD="$(openssl rand -hex 24)"
   REDIS_PASSWORD="$(openssl rand -hex 24)"
   HOST_ADDRESS="$(
