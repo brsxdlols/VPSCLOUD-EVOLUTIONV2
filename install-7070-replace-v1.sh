@@ -20,6 +20,7 @@ API_PORT="${EVOLUTION_PORT:-7070}"
 API_KEY=""
 LOGO_URL="https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/assets/evolution-logo-header.jpg"
 OLD_LOGO_URL="https://evolution-api.com/files/evo/evolution-logo-white.svg"
+OLD_LOGO_URL_ALT="https://evolution-api.com/files/evo/evolution-logo.svg"
 CLEANUP_URL="https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/cleanup.sh"
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -246,14 +247,14 @@ if [ "$MAGIC" != "ffd8ff" ]; then
 fi
 
 MATCHES="$(
-  grep -RIl "$OLD_LOGO_URL" "$MANAGER_DIR.new" 2>/dev/null || true
+  grep -RIlE 'https://evolution-api\.com/files/evo/evolution-logo(-white)?\.svg' "$MANAGER_DIR.new" 2>/dev/null || true
 )"
 if [ -z "$MATCHES" ]; then
   echo "ERRO: URL original do logo nao encontrada no Manager."
   exit 1
 fi
 for FILE in $MATCHES; do
-  sed -i "s#${OLD_LOGO_URL}#/manager/logo-header.jpg#g" "$FILE"
+  sed -i -e "s#${OLD_LOGO_URL}#/manager/logo-header.jpg#g" -e "s#${OLD_LOGO_URL_ALT}#/manager/logo-header.jpg#g" "$FILE"
 done
 
 NUMBER_MATCHES="$(
@@ -267,6 +268,17 @@ for FILE in $NUMBER_MATCHES; do
   sed -i \
     's@number:h\.number===""?null:h\.number@...(h.number==null||h.number===""?{}:{number:h.number.replace(/[^0-9]/g,"").length===10||h.number.replace(/[^0-9]/g,"").length===11?"55"+h.number.replace(/[^0-9]/g,""):h.number.replace(/[^0-9]/g,"")})@g' \
     "$FILE"
+done
+
+PLACEHOLDER_MATCHES="$(
+  grep -RIlF 'placeholder:"5511999999999"' "$MANAGER_DIR.new" 2>/dev/null || true
+)"
+if [ -z "$PLACEHOLDER_MATCHES" ]; then
+  echo "ERRO: placeholder original do campo de numero nao encontrado no Manager."
+  exit 1
+fi
+for FILE in $PLACEHOLDER_MATCHES; do
+  sed -i 's/placeholder:"5511999999999"/placeholder:"16999998888"/g' "$FILE"
 done
 
 COPY_MATCHES="$(
