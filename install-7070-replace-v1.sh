@@ -68,9 +68,10 @@ EOF
   fi
 }
 install_mkauth_recibo_log_rotation() {
-  # Optional MK-AUTH integration. Never change payment data or addon code.
-  if [ "${MKAUTH_RECIBO_LOGROTATE:-0}" != "1" ]; then
-    echo "INFO: rotacao de logs do MK-AUTH opcional (MKAUTH_RECIBO_LOGROTATE=1)."
+  # Auto-detect MK-AUTH Recibo_Evolution. Never change payment data or addon code.
+  # Explicit opt-out for environments that manage this log externally.
+  if [ "${MKAUTH_RECIBO_LOGROTATE:-1}" = "0" ]; then
+    echo "INFO: rotacao de logs do MK-AUTH desativada por MKAUTH_RECIBO_LOGROTATE=0."
     return
   fi
   RECIBO_LOG="/opt/mk-auth/dados/Recibo_Evolution/log_pagamentos.txt"
