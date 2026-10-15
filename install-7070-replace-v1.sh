@@ -166,12 +166,56 @@ wait_api() {
   exit 1
 }
 
-# This script installs on a fresh host or migrates from v1 only.
-# Existing v2 installations require a separate, backup-aware upgrade procedure.
-for existing in "$API_CONTAINER" "$PG_CONTAINER" "$REDIS_CONTAINER"; do
+patch_existing_v2() {
+  echo "Evolution V2 existente detectada. Entrando em modo PATCH seguro."
+  [ -d "$MANAGER_DIR" ] || { echo "ERRO: Manager nao encontrado em $MANAGER_DIR."; exit 1; }
+  JS="$(find "$MANAGER_DIR/assets" -maxdepth 1 -type f -name 'index-*.js' | head -n 1)"
+  [ -n "$JS" ] && [ -f "$JS" ] || { echo "ERRO: bundle JS do Manager nao encontrado."; exit 1; }
+  STAMP="$(date +%Y%m%d-%H%M%S)"
+  PATCH_BACKUP="$PROJECT_DIR/backups/manager-before-patch-$STAMP"
+  mkdir -p "$PROJECT_DIR/backups"; cp -a "$MANAGER_DIR" "$PATCH_BACKUP"
+  echo "Backup do Manager: $PATCH_BACKUP"
+  CHANGED=0
+  if ! grep -q 'placeholder:"16999998888"' "$JS"; then
+    if grep -q 'placeholder:"5511999999999"' "$JS"; then
+      sed -i 's/placeholder:"5511999999999"/placeholder:"16999998888"/g' "$JS"; CHANGED=1
+      echo "PATCH: placeholder sem DDI aplicado."
+    else echo "ERRO: placeholder conhecido nao encontrado."; rm -rf "$MANAGER_DIR"; cp -a "$PATCH_BACKUP" "$MANAGER_DIR"; exit 1; fi
+  else echo "OK: placeholder sem DDI ja aplicado."; fi
+  if ! grep -q 'length===10' "$JS" || ! grep -q 'length===11' "$JS" || ! grep -q '"55"+h.number.replace' "$JS"; then
+    if grep -qF 'number:h.number===""?null:h.number' "$JS"; then
+      sed -i 's@number:h\\.number===""?null:h\\.number@...(h.number==null||h.number===""?{}:{number:h.number.replace(/[^0-9]/g,"").length===10||h.number.replace(/[^0-9]/g,"").length===11?"55"+h.number.replace(/[^0-9]/g,""):h.number.replace(/[^0-9]/g,"")})@g' "$JS"
+      CHANGED=1; echo "PATCH: normalizacao 10/11 digitos + DDI 55 aplicada."
+    else echo "ERRO: rotina de numero nao reconhecida."; rm -rf "$MANAGER_DIR"; cp -a "$PATCH_BACKUP" "$MANAGER_DIR"; exit 1; fi
+  else echo "OK: normalizacao 10/11 digitos + DDI 55 ja aplicada."; fi
+  if ! grep -q 'document.execCommand("copy")' "$JS"; then
+    if grep -qF 'const U5=e=>{navigator.clipboard.writeText(e),me.success("Copiado para a área de transferência")};' "$JS"; then
+      sed -i 's@const U5=e=>{navigator.clipboard.writeText(e),me.success("Copiado para a área de transferência")};@const U5=e=>{const t=()=>{const n=document.createElement("textarea");n.value=e,n.style.position="fixed",n.style.opacity="0",document.body.appendChild(n),n.focus(),n.select();const r=document.execCommand("copy");n.remove(),r?me.success("Copiado para a área de transferência"):me.error("Não foi possível copiar")};navigator.clipboard\\&\\&window.isSecureContext?navigator.clipboard.writeText(e).then(()=>me.success("Copiado para a área de transferência")).catch(t):t()};@g' "$JS"
+      CHANGED=1; echo "PATCH: clipboard seguro aplicado."
+    else echo "ERRO: rotina de clipboard nao reconhecida."; rm -rf "$MANAGER_DIR"; cp -a "$PATCH_BACKUP" "$MANAGER_DIR"; exit 1; fi
+  else echo "OK: clipboard seguro ja aplicado."; fi
+  if [ ! -s "$MANAGER_DIR/logo-header.jpg" ]; then curl -fsSL "$LOGO_URL" -o "$MANAGER_DIR/logo-header.jpg"; CHANGED=1; echo "PATCH: logo personalizada instalada."; fi
+  LOGO_FILES="$(grep -RIlE 'https://evolution-api\\.com/files/evo/evolution-logo(-white)?\\.svg' "$MANAGER_DIR" 2>/dev/null || true)"
+  if [ -n "$LOGO_FILES" ]; then
+    for FILE in $LOGO_FILES; do sed -i -e "s#${OLD_LOGO_URL}#/manager/logo-header.jpg#g" -e "s#${OLD_LOGO_URL_ALT}#/manager/logo-header.jpg#g" "$FILE"; done
+    CHANGED=1; echo "PATCH: referencias da logo personalizadas."
+  else echo "OK: referencias antigas da logo nao encontradas."; fi
+  chmod -R a+rX "$MANAGER_DIR"
+  if ! grep -q 'placeholder:"16999998888"' "$JS" || ! grep -q 'length===10' "$JS" || ! grep -q 'length===11' "$JS" || ! grep -q '"55"+h.number.replace' "$JS" || ! grep -q 'navigator.clipboard' "$JS" || ! grep -q 'document.execCommand("copy")' "$JS" || ! grep -q '/manager/logo-header.jpg' "$JS"; then
+    echo "ERRO: validacao final falhou. Restaurando backup."; rm -rf "$MANAGER_DIR"; cp -a "$PATCH_BACKUP" "$MANAGER_DIR"; exit 1
+  fi
+  CODE="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${API_PORT}/" || true)"
+  [ "$CODE" = "200" ] || { echo "ERRO: API existente nao respondeu HTTP 200 (retorno: $CODE)."; exit 1; }
+  if [ "$CHANGED" -eq 0 ]; then echo "Evolution V2 ja estava totalmente corrigida. Nenhuma alteracao necessaria."; else echo "PATCH concluido e validado com sucesso."; fi
+  echo "API: HTTP $CODE"
+  exit 0
+}
+# Instalacao nova/migracao V1; se V2 ja existir, aplica somente patches seguros.
+if docker container inspect "$API_CONTAINER" >/dev/null 2>&1; then patch_existing_v2; fi
+for existing in "$PG_CONTAINER" "$REDIS_CONTAINER"; do
   if docker container inspect "$existing" >/dev/null 2>&1; then
-    echo "ERRO: ja existe a instalacao Evolution v2 ($existing)."
-    echo "Este instalador nao sobrescreve instalacoes existentes. Use um procedimento de atualizacao com backup."
+    echo "ERRO: encontrado $existing sem o container $API_CONTAINER."
+    echo "Estado parcial detectado; instalacao automatica abortada para proteger os dados."
     exit 1
   fi
 done
