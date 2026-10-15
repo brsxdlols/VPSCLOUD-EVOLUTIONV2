@@ -176,12 +176,14 @@ patch_existing_v2() {
   mkdir -p "$PROJECT_DIR/backups"; cp -a "$MANAGER_DIR" "$PATCH_BACKUP"
   echo "Backup do Manager: $PATCH_BACKUP"
   CHANGED=0
-  if ! grep -q 'placeholder:"16999998888"' "$JS"; then
-    if grep -q 'placeholder:"5511999999999"' "$JS"; then
-      sed -i 's/placeholder:"5511999999999"/placeholder:"16999998888"/g' "$JS"; CHANGED=1
-      echo "PATCH: placeholder sem DDI aplicado."
-    else echo "ERRO: placeholder conhecido nao encontrado."; rm -rf "$MANAGER_DIR"; cp -a "$PATCH_BACKUP" "$MANAGER_DIR"; exit 1; fi
-  else echo "OK: placeholder sem DDI ja aplicado."; fi
+  if grep -q 'placeholder:"16999998888"' "$JS"; then
+    echo "OK: placeholder sem DDI ja aplicado."
+  elif grep -q 'placeholder:"5511999999999"' "$JS"; then
+    sed -i 's/placeholder:"5511999999999"/placeholder:"16999998888"/g' "$JS"; CHANGED=1
+    echo "PATCH: placeholder sem DDI aplicado."
+  else
+    echo "INFO: Manager sem placeholder no campo de numero; nenhuma alteracao necessaria."
+  fi
   if ! grep -q 'length===10' "$JS" || ! grep -q 'length===11' "$JS" || ! grep -q '"55"+h.number.replace' "$JS"; then
     if grep -qF 'number:h.number===""?null:h.number' "$JS"; then
       sed -i 's@number:h\\.number===""?null:h\\.number@...(h.number==null||h.number===""?{}:{number:h.number.replace(/[^0-9]/g,"").length===10||h.number.replace(/[^0-9]/g,"").length===11?"55"+h.number.replace(/[^0-9]/g,""):h.number.replace(/[^0-9]/g,"")})@g' "$JS"
@@ -201,7 +203,7 @@ patch_existing_v2() {
     CHANGED=1; echo "PATCH: referencias da logo personalizadas."
   else echo "OK: referencias antigas da logo nao encontradas."; fi
   chmod -R a+rX "$MANAGER_DIR"
-  if ! grep -q 'placeholder:"16999998888"' "$JS" || ! grep -q 'length===10' "$JS" || ! grep -q 'length===11' "$JS" || ! grep -q '"55"+h.number.replace' "$JS" || ! grep -q 'navigator.clipboard' "$JS" || ! grep -q 'document.execCommand("copy")' "$JS" || ! grep -q '/manager/logo-header.jpg' "$JS"; then
+  if ! grep -q 'length===10' "$JS" || ! grep -q 'length===11' "$JS" || ! grep -q '"55"+h.number.replace' "$JS" || ! grep -q 'navigator.clipboard' "$JS" || ! grep -q 'document.execCommand("copy")' "$JS" || ! grep -q '/manager/logo-header.jpg' "$JS"; then
     echo "ERRO: validacao final falhou. Restaurando backup."; rm -rf "$MANAGER_DIR"; cp -a "$PATCH_BACKUP" "$MANAGER_DIR"; exit 1
   fi
   CODE="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${API_PORT}/" || true)"
@@ -317,13 +319,14 @@ done
 PLACEHOLDER_MATCHES="$(
   grep -RIlF 'placeholder:"5511999999999"' "$MANAGER_DIR.new" 2>/dev/null || true
 )"
-if [ -z "$PLACEHOLDER_MATCHES" ]; then
-  echo "ERRO: placeholder original do campo de numero nao encontrado no Manager."
-  exit 1
+if [ -n "$PLACEHOLDER_MATCHES" ]; then
+  for FILE in $PLACEHOLDER_MATCHES; do
+    sed -i 's/placeholder:"5511999999999"/placeholder:"16999998888"/g' "$FILE"
+  done
+  echo "PATCH: placeholder do numero atualizado."
+else
+  echo "INFO: esta versao do Manager nao possui placeholder no campo de numero; seguindo sem altera-lo."
 fi
-for FILE in $PLACEHOLDER_MATCHES; do
-  sed -i 's/placeholder:"5511999999999"/placeholder:"16999998888"/g' "$FILE"
-done
 
 COPY_MATCHES="$(
   grep -RIlF 'const U5=e=>{navigator.clipboard.writeText(e),me.success("Copiado para a área de transferência")};' "$MANAGER_DIR.new" 2>/dev/null || true
