@@ -40,6 +40,33 @@ EOF
   chmod 644 /etc/cron.d/vpscloud-evolution-cleanup
   /usr/local/sbin/vpscloud-evolution-cleanup >> /var/log/vpscloud-evolution-cleanup.log 2>&1 || true
 }
+install_log_rotation() {
+  # Docker containers already use json-file with max-size=10m and max-file=3.
+  # Rotate only the installer-owned host log; never truncate Docker-managed files.
+  cat > /etc/logrotate.d/vpscloud-evolution <<'EOF'
+/var/log/vpscloud-evolution-cleanup.log {
+    daily
+    rotate 3
+    maxsize 10M
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su root root
+}
+EOF
+  chmod 644 /etc/logrotate.d/vpscloud-evolution
+  if command -v logrotate >/dev/null 2>&1; then
+    if logrotate -d /etc/logrotate.d/vpscloud-evolution >/dev/null 2>&1; then
+      echo "OK: logrotate diario configurado para o log de limpeza."
+    else
+      echo "AVISO: logrotate instalado, mas a configuracao precisa ser revisada."
+    fi
+  else
+    echo "AVISO: logrotate nao instalado; instale o pacote logrotate para ativar a rotacao do log de limpeza."
+  fi
+}
 remove_v1() {
   V1_IMAGE=""
   if docker container inspect evolution_api >/dev/null 2>&1; then
@@ -209,6 +236,7 @@ patch_existing_v2() {
   CODE="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${API_PORT}/" || true)"
   [ "$CODE" = "200" ] || { echo "ERRO: API existente nao respondeu HTTP 200 (retorno: $CODE)."; exit 1; }
   if [ "$CHANGED" -eq 0 ]; then echo "Evolution V2 ja estava totalmente corrigida. Nenhuma alteracao necessaria."; else echo "PATCH concluido e validado com sucesso."; fi
+  install_log_rotation
   echo "API: HTTP $CODE"
   exit 0
 }
@@ -367,6 +395,7 @@ wait_api
 remove_v1
 
 install_daily_cleanup
+install_log_rotation
 
 echo
 echo "Evolution API v2 instalada com sucesso."
