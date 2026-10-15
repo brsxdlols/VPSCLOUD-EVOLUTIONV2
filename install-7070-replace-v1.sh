@@ -67,6 +67,57 @@ EOF
     echo "AVISO: logrotate nao instalado; instale o pacote logrotate para ativar a rotacao do log de limpeza."
   fi
 }
+install_mkauth_recibo_log_rotation() {
+  # Optional MK-AUTH integration. Never change payment data or addon code.
+  if [ "${MKAUTH_RECIBO_LOGROTATE:-0}" != "1" ]; then
+    echo "INFO: rotacao de logs do MK-AUTH opcional (MKAUTH_RECIBO_LOGROTATE=1)."
+    return
+  fi
+  RECIBO_LOG="/opt/mk-auth/dados/Recibo_Evolution/log_pagamentos.txt"
+  if [ ! -f "$RECIBO_LOG" ]; then
+    echo "INFO: log do Recibo_Evolution nao encontrado; configuracao ignorada."
+    return
+  fi
+  if ! command -v logrotate >/dev/null 2>&1 || [ ! -x /usr/sbin/logrotate ]; then
+    echo "AVISO: logrotate nao instalado; configuracao do Recibo_Evolution ignorada."
+    return
+  fi
+  if [ -e /etc/logrotate.d/mkauth-recibo-evolution ]; then
+    echo "AVISO: configuracao anterior em /etc/logrotate.d/mkauth-recibo-evolution; ajuste manualmente para evitar duplicidade."
+    return
+  fi
+  mkdir -p /etc/logrotate-mkauth
+  RECIBO_CONF="/etc/logrotate-mkauth/recibo-evolution"
+  RECIBO_CRON="/etc/cron.d/mkauth-recibo-evolution-logs"
+  if [ -e "$RECIBO_CONF" ] || [ -e "$RECIBO_CRON" ]; then
+    echo "INFO: rotina de logs Recibo_Evolution ja configurada; preservando configuracao existente."
+    return
+  fi
+  cat > "$RECIBO_CONF" <<'EOF'
+/opt/mk-auth/dados/Recibo_Evolution/log_pagamentos.txt {
+    hourly
+    maxsize 10M
+    rotate 72
+    maxage 3
+    missingok
+    notifempty
+    compress
+    copytruncate
+    su www-data www-data
+}
+EOF
+  chmod 644 "$RECIBO_CONF"
+  if ! logrotate -d -s /var/lib/logrotate/mkauth-recibo-evolution.status "$RECIBO_CONF" >/dev/null 2>&1; then
+    rm -f "$RECIBO_CONF"
+    echo "AVISO: validacao do logrotate do Recibo_Evolution falhou; cron nao instalado."
+    return
+  fi
+  cat > "$RECIBO_CRON" <<'EOF'
+7 * * * * root /usr/sbin/logrotate -s /var/lib/logrotate/mkauth-recibo-evolution.status /etc/logrotate-mkauth/recibo-evolution
+EOF
+  chmod 644 "$RECIBO_CRON"
+  echo "OK: rotacao horaria opcional do Recibo_Evolution configurada (retencao ate 3 dias nas rotacoes)."
+}
 remove_v1() {
   V1_IMAGE=""
   if docker container inspect evolution_api >/dev/null 2>&1; then
@@ -237,6 +288,7 @@ patch_existing_v2() {
   [ "$CODE" = "200" ] || { echo "ERRO: API existente nao respondeu HTTP 200 (retorno: $CODE)."; exit 1; }
   if [ "$CHANGED" -eq 0 ]; then echo "Evolution V2 ja estava totalmente corrigida. Nenhuma alteracao necessaria."; else echo "PATCH concluido e validado com sucesso."; fi
   install_log_rotation
+  install_mkauth_recibo_log_rotation
   echo "API: HTTP $CODE"
   exit 0
 }
@@ -396,6 +448,7 @@ remove_v1
 
 install_daily_cleanup
 install_log_rotation
+install_mkauth_recibo_log_rotation
 
 echo
 echo "Evolution API v2 instalada com sucesso."
