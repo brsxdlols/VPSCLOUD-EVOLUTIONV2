@@ -119,6 +119,20 @@ EOF
   chmod 644 "$RECIBO_CRON"
   echo "OK: rotacao horaria opcional do Recibo_Evolution configurada (retencao ate 3 dias nas rotacoes)."
 }
+install_qr_terminal_helper() {
+  QR_HELPER_URL="https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-qr-terminal.sh"
+  QR_HELPER_TARGET="/usr/local/sbin/evolution-qr-terminal"
+  QR_HELPER_TMP="${QR_HELPER_TARGET}.tmp.$"
+  if curl -fsSL "$QR_HELPER_URL" -o "$QR_HELPER_TMP"; then
+    chmod 700 "$QR_HELPER_TMP"
+    mv -f "$QR_HELPER_TMP" "$QR_HELPER_TARGET"
+    echo "OK: QR Code pelo terminal disponivel: evolution-qr-terminal MKAUTH"
+  else
+    rm -f "$QR_HELPER_TMP"
+    echo "AVISO: nao foi possivel instalar o auxiliar QR; Evolution preservada."
+  fi
+}
+
 remove_v1() {
   V1_IMAGE=""
   if docker container inspect evolution_api >/dev/null 2>&1; then
@@ -290,6 +304,7 @@ patch_existing_v2() {
   if [ "$CHANGED" -eq 0 ]; then echo "Evolution V2 ja estava totalmente corrigida. Nenhuma alteracao necessaria."; else echo "PATCH concluido e validado com sucesso."; fi
   install_log_rotation
   install_mkauth_recibo_log_rotation
+  install_qr_terminal_helper
   echo "API: HTTP $CODE"
   exit 0
 }
@@ -450,6 +465,7 @@ remove_v1
 install_daily_cleanup
 install_log_rotation
 install_mkauth_recibo_log_rotation
+install_qr_terminal_helper
 
 echo
 echo "Evolution API v2 instalada com sucesso."
