@@ -303,10 +303,21 @@ upgrade_existing_api() {
     echo "ERRO: nao foi possivel copiar backup para validacao; atualizacao abortada."
     exit 1
   fi
-  if docker exec "$PG_CONTAINER" pg_restore -l "$PG_BACKUP_TMP" > "$UPGRADE_DIR/postgres-catalog.txt"; then
-    docker exec "$PG_CONTAINER" rm -f "$PG_BACKUP_TMP" || true
-  else
-    docker exec "$PG_CONTAINER" rm -f "$PG_BACKUP_TMP" || true
+  # Docker 18.09 occasionally resets the socket on exec. Retry validation
+  # without treating a failed attempt as a successful archive verification.
+  VALIDATED=0
+  ATTEMPT=1
+  while [ "$ATTEMPT" -le 3 ]; do
+    if docker exec "$PG_CONTAINER" pg_restore -l "$PG_BACKUP_TMP" > "$UPGRADE_DIR/postgres-catalog.txt"; then
+      VALIDATED=1
+      break
+    fi
+    echo "AVISO: falha na validacao do backup (tentativa $ATTEMPT/3)."
+    ATTEMPT=$((ATTEMPT + 1))
+    sleep 2
+  done
+  docker exec "$PG_CONTAINER" rm -f "$PG_BACKUP_TMP" || true
+  if [ "$VALIDATED" -ne 1 ]; then
     echo "ERRO: nao foi possivel validar o catalogo do backup; atualizacao abortada."
     exit 1
   fi
