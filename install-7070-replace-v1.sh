@@ -296,7 +296,17 @@ upgrade_existing_api() {
     exit 1
   fi
   [ -s "$UPGRADE_DIR/postgres.dump" ] || { echo "ERRO: backup vazio; abortando."; exit 1; }
-  if ! docker exec -i "$PG_CONTAINER" pg_restore -l < "$UPGRADE_DIR/postgres.dump" > "$UPGRADE_DIR/postgres-catalog.txt"; then
+  # Avoid Docker 18.09 stdin streaming failures (connection reset by peer).
+  # Copy archive into PostgreSQL container, validate locally, then remove copy.
+  PG_BACKUP_TMP="/tmp/evolution-upgrade-$STAMP_UPGRADE.dump"
+  if ! docker cp "$UPGRADE_DIR/postgres.dump" "$PG_CONTAINER:$PG_BACKUP_TMP"; then
+    echo "ERRO: nao foi possivel copiar backup para validacao; atualizacao abortada."
+    exit 1
+  fi
+  if docker exec "$PG_CONTAINER" pg_restore -l "$PG_BACKUP_TMP" > "$UPGRADE_DIR/postgres-catalog.txt"; then
+    docker exec "$PG_CONTAINER" rm -f "$PG_BACKUP_TMP" || true
+  else
+    docker exec "$PG_CONTAINER" rm -f "$PG_BACKUP_TMP" || true
     echo "ERRO: nao foi possivel validar o catalogo do backup; atualizacao abortada."
     exit 1
   fi
