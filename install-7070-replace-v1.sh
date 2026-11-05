@@ -277,10 +277,13 @@ patch_existing_v2() {
   else
     echo "INFO: Manager sem placeholder no campo de numero; nenhuma alteracao necessaria."
   fi
-  if ! grep -q 'length===10' "$JS" || ! grep -q 'length===11' "$JS" || ! grep -q '"55"+h.number.replace' "$JS"; then
+  if ! grep -qF '.length===10' "$JS" || ! grep -qF '.length===11' "$JS" || { ! grep -qF '"55"+h.number.replace' "$JS" && ! grep -qF '"55"+d.number.replace' "$JS"; }; then
     if grep -qF 'number:h.number===""?null:h.number' "$JS"; then
       sed -i 's@number:h\\.number===""?null:h\\.number@...(h.number==null||h.number===""?{}:{number:h.number.replace(/[^0-9]/g,"").length===10||h.number.replace(/[^0-9]/g,"").length===11?"55"+h.number.replace(/[^0-9]/g,""):h.number.replace(/[^0-9]/g,"")})@g' "$JS"
       CHANGED=1; echo "PATCH: normalizacao 10/11 digitos + DDI 55 aplicada."
+    elif grep -qF 'number:d.number===""?null:d.number' "$JS"; then
+      sed -i 's@number:d\.number===""?null:d\.number@...(d.number==null||d.number===""?{}:{number:d.number.replace(/[^0-9]/g,"").length===10||d.number.replace(/[^0-9]/g,"").length===11?"55"+d.number.replace(/[^0-9]/g,""):d.number.replace(/[^0-9]/g,"")})@g' "$JS"
+      CHANGED=1; echo "PATCH: normalizacao 10/11 digitos + DDI 55 aplicada (d.number)."
     else echo "ERRO: rotina de numero nao reconhecida."; rm -rf "$MANAGER_DIR"; cp -a "$PATCH_BACKUP" "$MANAGER_DIR"; exit 1; fi
   else echo "OK: normalizacao 10/11 digitos + DDI 55 ja aplicada."; fi
   if ! grep -q 'document.execCommand("copy")' "$JS"; then
@@ -296,7 +299,7 @@ patch_existing_v2() {
     CHANGED=1; echo "PATCH: referencias da logo personalizadas."
   else echo "OK: referencias antigas da logo nao encontradas."; fi
   chmod -R a+rX "$MANAGER_DIR"
-  if ! grep -q 'length===10' "$JS" || ! grep -q 'length===11' "$JS" || ! grep -q '"55"+h.number.replace' "$JS" || ! grep -q 'navigator.clipboard' "$JS" || ! grep -q 'document.execCommand("copy")' "$JS" || ! grep -q '/manager/logo-header.jpg' "$JS"; then
+  if ! grep -qF '.length===10' "$JS" || ! grep -qF '.length===11' "$JS" || { ! grep -qF '"55"+h.number.replace' "$JS" && ! grep -qF '"55"+d.number.replace' "$JS"; } || ! grep -q 'navigator.clipboard' "$JS" || ! grep -q 'document.execCommand("copy")' "$JS" || ! grep -q '/manager/logo-header.jpg' "$JS"; then
     echo "ERRO: validacao final falhou. Restaurando backup."; rm -rf "$MANAGER_DIR"; cp -a "$PATCH_BACKUP" "$MANAGER_DIR"; exit 1
   fi
   CODE="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${API_PORT}/" || true)"
