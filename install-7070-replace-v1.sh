@@ -259,6 +259,62 @@ wait_api() {
   exit 1
 }
 
+upgrade_existing_api() {
+  CURRENT_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$API_CONTAINER")" || exit 1
+  if [ "$CURRENT_IMAGE" = "$API_IMAGE" ]; then
+    echo "OK: API ja utiliza $API_IMAGE."
+    return 0
+  fi
+  echo "Atualizacao detectada: $CURRENT_IMAGE -> $API_IMAGE"
+  [ -s "$ENV_FILE" ] || { echo "ERRO: arquivo ENV ausente; atualizacao abortada."; exit 1; }
+  for item in "$PG_CONTAINER" "$REDIS_CONTAINER"; do
+    docker inspect "$item" >/dev/null 2>&1 || { echo "ERRO: dependencia $item ausente."; exit 1; }
+    [ "$(docker inspect --format '{{.State.Running}}' "$item")" = true ] || { echo "ERRO: $item nao esta ativo."; exit 1; }
+  done
+  [ "$(docker inspect --format '{{.State.Running}}' "$API_CONTAINER")" = true ] || { echo "ERRO: API nao esta ativa."; exit 1; }
+  docker inspect --format '{{range .Mounts}}{{println .Destination}}{{end}}' "$PG_CONTAINER" | grep -qx '/var/lib/postgresql/data' || { echo "ERRO: volume persistente PostgreSQL nao encontrado."; exit 1; }
+  docker inspect --format '{{range .Mounts}}{{println .Destination}}{{end}}' "$REDIS_CONTAINER" | grep -qx '/data' || { echo "ERRO: volume persistente Redis nao encontrado."; exit 1; }
+  [ "$(docker inspect --format '{{.HostConfig.NetworkMode}}' "$API_CONTAINER")" = "$NETWORK" ] || { echo "ERRO: rede da API diferente do padrao; atualizacao manual necessaria."; exit 1; }
+  [ "$(docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' "$API_CONTAINER")" != "" ] || exit 1
+  [ -n "$(env_value AUTHENTICATION_API_KEY)" ] || { echo "ERRO: chave API nao encontrada."; exit 1; }
+  [ -n "$(env_value DATABASE_PASSWORD)" ] || { echo "ERRO: credencial PostgreSQL nao encontrada."; exit 1; }
+  [ -n "$(env_value REDIS_PASSWORD)" ] || { echo "ERRO: credencial Redis nao encontrada."; exit 1; }
+  echo "Verificando Docker e capacidade de backup..."
+  docker info >/dev/null 2>&1 || { echo "ERRO: daemon Docker indisponivel."; exit 1; }
+  docker exec "$PG_CONTAINER" pg_isready -U evolution -d evolution_api >/dev/null 2>&1 || { echo "ERRO: PostgreSQL nao esta pronto."; exit 1; }
+  STAMP_UPGRADE="$(date +%Y%m%d-%H%M%S)"
+  UPGRADE_DIR="$PROJECT_DIR/backups/api-upgrade-$STAMP_UPGRADE"
+  mkdir -p "$UPGRADE_DIR"
+  chmod 700 "$UPGRADE_DIR"
+  cp -p "$ENV_FILE" "$UPGRADE_DIR/evolution-v2.env"
+  docker inspect "$API_CONTAINER" > "$UPGRADE_DIR/api-container-inspect.json"
+  docker inspect "$PG_CONTAINER" > "$UPGRADE_DIR/postgres-container-inspect.json"
+  docker inspect "$REDIS_CONTAINER" > "$UPGRADE_DIR/redis-container-inspect.json"
+  echo "Gerando backup PostgreSQL..."
+  if ! docker exec "$PG_CONTAINER" pg_dump -U evolution -d evolution_api -Fc > "$UPGRADE_DIR/postgres.dump"; then
+    echo "ERRO: pg_dump falhou; atualizacao abortada."
+    exit 1
+  fi
+  [ -s "$UPGRADE_DIR/postgres.dump" ] || { echo "ERRO: backup vazio; abortando."; exit 1; }
+  if ! docker exec -i "$PG_CONTAINER" pg_restore -l < "$UPGRADE_DIR/postgres.dump" > "$UPGRADE_DIR/postgres-catalog.txt"; then
+    echo "ERRO: nao foi possivel validar o catalogo do backup; atualizacao abortada."
+    exit 1
+  fi
+  [ -s "$UPGRADE_DIR/postgres-catalog.txt" ] || { echo "ERRO: catalogo do backup vazio."; exit 1; }
+  chmod 600 "$UPGRADE_DIR"/*
+  echo "Backup gerado e catalogo validado: $UPGRADE_DIR"
+  echo "Baixando $API_IMAGE..."
+  docker pull "$API_IMAGE" || { echo "ERRO: falha ao baixar imagem; API atual preservada."; exit 1; }
+  echo "ATENCAO: atualizacoes podem alterar o esquema do banco. Uma falha exige recuperacao supervisionada."
+  if [ "${EVOLUTION_ALLOW_API_UPGRADE:-0}" != "1" ]; then
+    echo "Atualizacao preparada, mas nao executada. Para autorizar, use EVOLUTION_ALLOW_API_UPGRADE=1."
+    return 0
+  fi
+  echo "ERRO: substituicao automatica bloqueada ate validacao de compatibilidade e plano de recuperacao do banco."
+  echo "API atual preservada. Backup: $UPGRADE_DIR"
+  return 1
+}
+
 patch_existing_v2() {
   echo "Evolution V2 existente detectada. Entrando em modo PATCH seguro."
   [ -d "$MANAGER_DIR" ] || { echo "ERRO: Manager nao encontrado em $MANAGER_DIR."; exit 1; }
@@ -309,6 +365,7 @@ patch_existing_v2() {
   install_mkauth_recibo_log_rotation
   install_qr_terminal_helper
   echo "API: HTTP $CODE"
+  upgrade_existing_api
   exit 0
 }
 # Instalacao nova/migracao V1; se V2 ja existir, aplica somente patches seguros.
