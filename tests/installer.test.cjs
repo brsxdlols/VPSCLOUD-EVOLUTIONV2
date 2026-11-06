@@ -34,7 +34,7 @@ test('POSIX syntax for every shell script',()=>{
 });
 for(const [scenario,message] of [['diagnose',''],['v1','V1 encontrada'],['orphan-volume','volume preexistente'],['nonstandard','nomes diferentes'],['api-stopped','API parada'],['missing-env','ENV ausente'],['wrong-network','topologia nao padrao'],['partial','Estado parcial']]){
  test('preflight '+scenario,()=>{
-  const dir=path.join(tmp,scenario);fs.mkdirSync(dir);const bin=path.join(dir,'bin');fs.mkdirSync(bin);fs.writeFileSync(path.join(bin,'docker'),mock,{mode:0o755});
+  const dir=path.join(tmp,scenario);fs.mkdirSync(dir);const bin=path.join(dir,'bin');fs.mkdirSync(bin);fs.writeFileSync(path.join(bin,'id'),'#!/bin/sh\nprintf 0\n',{mode:0o755});fs.writeFileSync(path.join(bin,'docker'),mock,{mode:0o755});
   for(const dep of ['curl','openssl'])fs.writeFileSync(path.join(bin,dep),'#!/bin/sh\necho UNEXPECTED_MUTATION >&2\nexit 97\n',{mode:0o755});
   const project=path.join(dir,'project');
   if(['api-stopped','wrong-network'].includes(scenario)){fs.mkdirSync(project);fs.writeFileSync(path.join(project,'evolution-v2.env'),'TEST=1\n')}
@@ -53,7 +53,7 @@ test('repair does not log out after failed backup',()=>{
  const r=cp.spawnSync('sh',[path.join(root,'evolution-reconnect.sh'),'MKAUTH'],{encoding:'utf8',env:{...process.env,EVOLUTION_CONFIRM_RECONNECT:'MKAUTH',EVOLUTION_BACKUP_HELPER:helper}});assert.equal(r.status,17);
 });
 test('backup restarts API after dump failure',()=>{
- const dir=path.join(tmp,'backup-failure');fs.mkdirSync(dir);const bin=path.join(dir,'bin');fs.mkdirSync(bin);const project=path.join(dir,'project');fs.mkdirSync(project);
+ const dir=path.join(tmp,'backup-failure');fs.mkdirSync(dir);const bin=path.join(dir,'bin');fs.mkdirSync(bin);fs.writeFileSync(path.join(bin,'id'),'#!/bin/sh\nprintf 0\n',{mode:0o755});const project=path.join(dir,'project');fs.mkdirSync(project);
  const log=path.join(dir,'calls');const docker=`#!/bin/sh
 printf '%s\\n' "$*" >> "$MOCK_LOG"
 if [ "$1" = inspect ]; then
