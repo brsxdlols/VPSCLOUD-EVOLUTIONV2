@@ -104,7 +104,7 @@ install_integrations() {
 install_session_helpers() {
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-recibo.tmp.XXXXXX)
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-install-recibo.sh" -o "$HELPER_TMP"
-printf '%s  %s\n' '8bc34b899f619b986a611bdfd497d2f991a15edfa82c2dfbf4d094c640d27cc3' "$HELPER_TMP" | sha256sum -c - >/dev/null
+printf '%s  %s\n' '71720032b8baabd1810969e7e77cffff9d1d5103d7894a0b0efcfea11cc9ead2' "$HELPER_TMP" | sha256sum -c - >/dev/null
   chmod 700 "$HELPER_TMP"
   mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-recibo
 
