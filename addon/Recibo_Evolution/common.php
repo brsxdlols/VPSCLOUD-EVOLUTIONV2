@@ -83,11 +83,32 @@ function recibo_outcome($r) {
     if (!$r['error'] && $r['http']>=400 && $r['http']<500 && $r['http']!==408) return 3;
     return 2; // Timeout/ambiguous acceptance: require operator review, never resend automatically.
 }
-function recibo_discard_pending($db) {
+function recibo_discard_where($scope) {
+    if(!in_array($scope,array('all','before_today'),true))throw new Exception('Opcao de descarte invalida.');
+    return 'envio=0'.($scope==='before_today'?' AND (datapag < CURDATE() OR datapag IS NULL)':'');
+}
+function recibo_simulate_discard($db,$scope) {
+    $q=$db->query('SELECT COUNT(*) AS total FROM brl_pago WHERE '.recibo_discard_where($scope));
+    if(!$q)throw new Exception('Fila indisponivel.');
+    return (int)$q->fetch_assoc()['total'];
+}
+function recibo_simulate_next($db) {
+    $q=$db->query("SELECT p.id,c.nome,c.celular,c.zap,c.cli_ativado FROM brl_pago p LEFT JOIN sis_cliente c ON c.login=p.login WHERE p.envio=0 ORDER BY p.id LIMIT 1");
+    if(!$q)throw new Exception('Fila indisponivel.');$row=$q->fetch_assoc();
+    if(!$row)return 'Simulacao: nenhum recibo pendente. Nada foi alterado ou enviado.';
+    $eligible=recibo_phone($row['celular']?:'') && $row['zap']!=='nao' && $row['cli_ativado']!=='n' && $row['nome'];
+    return 'Simulacao: proximo ID '.(int)$row['id'].($eligible?' esta apto pela verificacao de contato.':' seria ignorado por contato/preferencia.').' Nenhum envio, alteracao de fila ou chamada ao WhatsApp. A conexao nao foi testada.';
+}
+function recibo_test_message($s) {
+    $sample=array('cliente'=>'Cliente de exemplo','cpf_cnpj'=>'000.000.000-00','id_pagamento'=>'TESTE','data_pagamento'=>date('d/m/Y'),'data_vencimento'=>date('d/m/Y'),'valor'=>'100,00','valor_pago'=>'100,00','coletor'=>'Teste','forma_pagamento'=>'PIX','provedor'=>$s['provider']);
+    return "*TESTE — SEM VALOR DE RECIBO*\nDados ficticios.\n\n".recibo_render($s['template'],$sample);
+}
+function recibo_discard_pending($db,$scope='all') {
+    $where=recibo_discard_where($scope);
     $lock=$db->query("SELECT GET_LOCK('vpscloud_recibo_evolution',0) AS acquired");
     if(!$lock || (int)$lock->fetch_assoc()['acquired']!==1) throw new Exception('Ha um envio em andamento. Aguarde e tente novamente.');
     try {
-        if(!$db->query('UPDATE brl_pago SET envio=4 WHERE envio=0')) throw new Exception('Nao foi possivel descartar os pendentes.');
+        if(!$db->query('UPDATE brl_pago SET envio=4 WHERE '.$where)) throw new Exception('Nao foi possivel descartar os pendentes.');
         return $db->affected_rows;
     } finally { $db->query("SELECT RELEASE_LOCK('vpscloud_recibo_evolution')"); }
 }

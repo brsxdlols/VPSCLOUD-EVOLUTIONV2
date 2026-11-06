@@ -31,11 +31,29 @@ try {
         $s=recibo_settings();$sample=array('cliente'=>'Cliente de exemplo','cpf_cnpj'=>'000.000.000-00','id_pagamento'=>'123','data_pagamento'=>date('d/m/Y'),'data_vencimento'=>date('d/m/Y'),'valor'=>'100,00','valor_pago'=>'100,00','coletor'=>'Atendimento','forma_pagamento'=>'PIX','provedor'=>$s['provider']);
         recibo_json(array('preview'=>recibo_render(substr($_POST['template'],0,10000),$sample)));
     }
+    if ($action==='simulate_next' || $action==='simulate_discard') {
+        $db=recibo_db();try{
+            if($action==='simulate_next')$message=recibo_simulate_next($db);
+            else{$count=recibo_simulate_discard($db,$_POST['scope'] ?? 'all');$message="Simulacao: $count pendentes seriam descartados. Nenhum registro foi alterado e nenhuma mensagem foi enviada.";}
+        }finally{$db->close();}recibo_json(array('message'=>$message));
+    }
+    if ($action==='send_test') {
+        if(($_POST['confirm_test'] ?? '')!=='ENVIAR_TESTE')throw new Exception('Confirme o envio de teste.');
+        $phone=recibo_phone($_POST['test_phone'] ?? '');if(!$phone)throw new Exception('Informe o numero de teste com DDD e DDI.');
+        if(time()-(int)($_SESSION['recibo_last_test'] ?? 0)<60)throw new Exception('Aguarde 60 segundos antes de outro teste.');
+        $s=recibo_settings();if(!$s['token'])throw new Exception('Salve a conexao primeiro.');
+        $_SESSION['recibo_last_test']=time();session_write_close();
+        $health=recibo_http($s,'/instance/connectionState/'.rawurlencode($s['instance']));
+        if($health['http']!==200 || ($health['body']['instance']['state'] ?? '')!=='open')throw new Exception('Instancia desconectada ou API indisponivel. Teste nao enviado.');
+        $out=recibo_http($s,'/message/sendText/'.rawurlencode($s['instance']),array('number'=>$phone,'text'=>recibo_test_message($s)));
+        $status=recibo_outcome($out);
+        recibo_json(array('message'=>$status===1?'Teste aceito pela API. Confira no numero informado. A fila de recibos nao foi alterada.':($status===2?'Resultado incerto. Confira o numero de teste antes de repetir. A fila nao foi alterada.':'Teste recusado pela API. Confira a conexao. A fila nao foi alterada.')));
+    }
     if ($action==='run') { session_write_close();$db=recibo_db();$out=recibo_run($db,true,1);$db->close();recibo_json($out); }
     if ($action==='discard_pending') {
         if (($_POST['confirm_discard'] ?? '')!=='DESCARTAR') throw new Exception('Confirme o descarte dos pendentes.');
         session_write_close();$db=recibo_db();
-        try{$count=recibo_discard_pending($db);}finally{$db->close();}
+        try{$count=recibo_discard_pending($db,$_POST['scope'] ?? 'all');}finally{$db->close();}
         recibo_log(0,'MANUAL_DISCARD_PENDING COUNT='.$count);
         recibo_json(array('message'=>"Pendentes descartados sem envio: $count. Historico preservado.",'discarded'=>$count));
     }

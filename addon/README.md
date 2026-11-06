@@ -17,3 +17,7 @@ Rollback: pause o cron específico, preserve a nova fila, restaure os arquivos e
 O botão **Descartar recibos pendentes sem enviar** marca somente `envio=0` como `4` sob o mesmo lock do worker. Preserva o histórico e os pagamentos, não marca como entregue e não altera registros em revisão. Exige sessão MK-AUTH, CSRF e confirmação. Novos pagamentos continuam capturados.
 
 O botão **Usar servidor WhatsApp do MK-AUTH** importa e salva a conexão atual de Opções → WhatsApp → Servidor (Evolution2 API), preservando template e agendamento. A leitura usa uma view restrita às quatro opções do gateway; não concede acesso às demais senhas de `sis_opcao`. O token não é devolvido ao navegador. O acesso dos botões usa o mesmo bootstrap de sessão nativa da página.
+
+Simulações de próximo recibo e descarte só leem a fila e não chamam a Evolution API. O descarte oferece todos os pendentes ou apenas anteriores a hoje, considerando `datapag` e `CURDATE()` do banco; datas ausentes são tratadas como antigas. A simulação é uma fotografia: o automático continua ativo se estiver habilitado. Para testes com fila parada, desative e salve o agendamento primeiro.
+
+O teste real usa conexão/template salvos, dados fictícios e exclusivamente o número informado e confirmado, sem consumir a fila. Exige CSRF, instância conectada e espera de 60 segundos entre testes na mesma sessão. Resultado incerto não é reenviado automaticamente. O teste de regressão HTTP usa uma API falsa em loopback; não envia mensagens WhatsApp.

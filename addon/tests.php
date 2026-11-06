@@ -16,4 +16,7 @@ file_put_contents($tmp.'/test.log',str_repeat('old-line\n',10000)."\nnew-line\n"
 $native=recibo_native_connection(array('wapp_servidor'=>'evolution2_api','wapp_host'=>'192.0.2.10:7070','wapp_login'=>'TESTE','wapp_pass'=>'mock-token'));
 check($native['api_url']==='http://192.0.2.10:7070' && $native['instance']==='TESTE' && $native['token']==='mock-token','native gateway maps server instance and token');
 $rejected=false;try{recibo_native_connection(array('wapp_servidor'=>'outro'));}catch(Exception $e){$rejected=true;}check($rejected,'native import rejects unsupported gateway');
+check(strpos(recibo_discard_where('before_today'),'datapag < CURDATE()')!==false,'discard older scope uses database calendar day');
+$bad=false;try{recibo_discard_where('invalid');}catch(Exception $e){$bad=true;}check($bad,'unknown discard scope rejected');
+$msg=recibo_test_message(recibo_defaults());check(strpos($msg,'SEM VALOR DE RECIBO')!==false && strpos($msg,'Cliente de exemplo')!==false,'test message uses explicitly fictitious data');
 foreach(glob($tmp.'/*')as$f)unlink($f);rmdir($tmp);echo "No database or WhatsApp request executed.\n";
