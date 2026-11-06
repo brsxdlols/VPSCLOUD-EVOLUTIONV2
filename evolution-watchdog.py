@@ -3,6 +3,7 @@
 import fcntl
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -18,6 +19,24 @@ MAINTENANCE = Path('/run/vpscloud-evolution-maintenance')
 BUSY_LOCKS = [Path('/run/lock/vpscloud-evolution-session.lock'),
               Path('/run/lock/vpscloud-evolution-install.lock')]
 CONTAINERS = ['evolution_v2_postgres', 'evolution_v2_redis', 'evolution_v2_api']
+
+
+def log_event(level, text):
+    line = time.strftime('%Y-%m-%d %H:%M:%S') + ' ' + str(text).replace('\n', ' ').replace('\r', ' ')[:2000] + '\n'
+    try:
+        fd = os.open('/var/log/vpscloud-evolution-watchdog.log', os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
+        with os.fdopen(fd, 'a') as stream:
+            stream.write(line)
+    except OSError:
+        syslog.syslog(level, 'Evolution: falha ao escrever log do monitor')
+
+
+def disk_status():
+    usage = shutil.disk_usage('/')
+    pct = int(100 * usage.used / usage.total) if usage.total else 100
+    info = {'used_percent': pct, 'free_gib': round(usage.free / (1024 ** 3), 1)}
+    issue = 'DISCO_CRITICO' if pct >= 90 or usage.free < 1024 ** 3 else 'DISCO_ATENCAO' if pct >= 80 else None
+    return info, ([issue] if issue else [])
 
 
 def run(args, timeout=10):
@@ -55,7 +74,7 @@ def notify(config, text):
     token = config.get('telegram_bot_token', '')
     chat = config.get('telegram_chat_id', '')
     if not token or not chat:
-        syslog.syslog(syslog.LOG_WARNING, 'Evolution: Telegram ainda nao configurado')
+        log_event(syslog.LOG_WARNING, 'Evolution: Telegram ainda nao configurado')
         return False
     kind = config.get('_alert_image', '')
     if kind in ('critical', 'whatsapp', 'recovery'):
@@ -73,13 +92,13 @@ def notify(config, text):
                     if len(text) <= 1024:
                         return True
                 else:
-                    syslog.syslog(syslog.LOG_WARNING, 'Evolution: imagem nao entregue; tentando alerta em texto')
+                    log_event(syslog.LOG_WARNING, 'Evolution: imagem nao entregue; tentando alerta em texto')
             except OSError:
-                syslog.syslog(syslog.LOG_WARNING, 'Evolution: imagem indisponivel; tentando alerta em texto')
+                log_event(syslog.LOG_WARNING, 'Evolution: imagem indisponivel; tentando alerta em texto')
     for start in range(0, len(text), 3900):
         data = urllib.parse.urlencode({'chat_id': chat, 'text': text[start:start + 3900]}).encode()
         if not telegram_request(token, 'sendMessage', data, 'application/x-www-form-urlencoded'):
-            syslog.syslog(syslog.LOG_ERR, 'Evolution: falha ao entregar alerta Telegram')
+            log_event(syslog.LOG_ERR, 'Evolution: falha ao entregar alerta Telegram')
             return False
     return True
 
@@ -90,7 +109,7 @@ def attempt(state, key, command, now):
         return
     actions[key] = now
     code, _ = run(command, timeout=45)
-    syslog.syslog(syslog.LOG_WARNING, 'Evolution: tentativa de recuperacao %s rc=%s' % (key, code))
+    log_event(syslog.LOG_WARNING, 'Evolution: tentativa de recuperacao %s rc=%s' % (key, code))
 
 
 def inspect_health(config, state, now):
@@ -146,16 +165,18 @@ def update_one(config, state, issues, now, boot_grace=False):
     state['issues'] = sorted(issues)
     state['healthy'] = not bool(issues)
     label = str(config.get('label', 'MK-AUTH / Evolution'))
+    if config.get('_disk_line'):
+        label += '\n' + config['_disk_line']
     if config.get('_phone_line'):
         label += '\n' + config['_phone_line']
     if issues:
         state['failures'] = state.get('failures', 0) + 1
         key = ', '.join(sorted(issues))
-        syslog.syslog(syslog.LOG_WARNING, 'Evolution: ' + key)
+        log_event(syslog.LOG_WARNING, 'Evolution: ' + key)
         due = (key != state.get('alert_key') or now - state.get('last_alert', 0) >= 1800)
         if state['failures'] >= 2 and due and not boot_grace:
             target = dict(config)
-            target['_alert_image'] = 'whatsapp' if all(x.startswith(('WHATSAPP_', 'INSTANCIA_')) for x in issues) else 'critical'
+            target['_alert_image'] = '' if all(x.startswith('DISCO_') for x in issues) else 'whatsapp' if all(x.startswith(('WHATSAPP_', 'INSTANCIA_')) for x in issues) else 'critical'
             if notify(target, label + '\nALERTA: ' + key + '\nCobrancas podem nao estar sendo enviadas. Verifique a instancia.'):
                 state['alert_key'] = key
                 state['last_alert'] = now
@@ -163,8 +184,9 @@ def update_one(config, state, issues, now, boot_grace=False):
         state['failures'] = 0
         if state.get('alert_key'):
             target = dict(config)
-            target['_alert_image'] = 'recovery'
-            recovered = 'WhatsApp da instancia conectado.' if config.get('_scope') == 'instance' else 'Docker e API respondem normalmente.'
+            disk_only = all(x.startswith('DISCO_') for x in state['alert_key'].split(', '))
+            target['_alert_image'] = '' if disk_only else 'recovery'
+            recovered = 'Espaco em disco voltou ao limite seguro.' if disk_only else 'WhatsApp da instancia conectado.' if config.get('_scope') == 'instance' else 'Docker e API respondem normalmente.'
             if notify(target, label + '\nRECUPERADO: ' + recovered + ' Isso nao valida entrega de cobrancas anteriores.'):
                 state['alert_key'] = ''
                 state['last_alert'] = now
@@ -175,6 +197,9 @@ def update_alerts(config, state, issues, now, boot_grace=False):
     conditions = state.setdefault('conditions', {})
     global_issues = [x for x in issues if not x.startswith(('WHATSAPP_', 'INSTANCIA_'))]
     general = dict(config)
+    disk = state.get('disk', {})
+    if disk and any(x.startswith('DISCO_') for x in issues):
+        general['_disk_line'] = 'Disco: %s%% ocupado; %s GiB livres' % (disk['used_percent'], disk['free_gib'])
     known = state.get('last_numbers', {})
     lines = [x['name'] + ': ' + known[x['name']]['number'] for x in config.get('instances', []) if x.get('enabled') and x['name'] in known]
     if lines:
@@ -216,7 +241,7 @@ def main():
         if MAINTENANCE.exists() or any(path.exists() for path in BUSY_LOCKS):
             return 0
         if CONFIG.exists() and (CONFIG.stat().st_mode & 0o077):
-            syslog.syslog(syslog.LOG_ERR, 'Evolution: arquivo de configuracao deve ter modo 600')
+            log_event(syslog.LOG_ERR, 'Evolution: arquivo de configuracao deve ter modo 600')
             return 1
         config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
         path = STATE_DIR / 'state.json'
@@ -226,6 +251,8 @@ def main():
             state = {}
         now = int(time.time())
         issues = inspect_health(config, state, now)
+        state['disk'], disk_issues = disk_status()
+        issues.extend(disk_issues)
         try:
             boot_grace = float(Path('/proc/uptime').read_text().split()[0]) < 180
         except (OSError, ValueError):
@@ -239,5 +266,5 @@ if __name__ == '__main__':
     try:
         sys.exit(main())
     except Exception:
-        syslog.syslog(syslog.LOG_ERR, 'Evolution: watchdog falhou; verificar configuracao e execucao')
+        log_event(syslog.LOG_ERR, 'Evolution: watchdog falhou; verificar configuracao e execucao')
         sys.exit(1)

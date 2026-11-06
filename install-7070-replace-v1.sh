@@ -84,88 +84,33 @@ CLEANUP
   chmod 644 /etc/cron.d/vpscloud-evolution-cleanup
 }
 install_log_rotation() {
-  # Docker containers already use json-file with max-size=10m and max-file=3.
-  # Rotate only the installer-owned host log; never truncate Docker-managed files.
-  cat > /etc/logrotate.d/vpscloud-evolution <<'EOF'
-/var/log/vpscloud-evolution-cleanup.log {
-    daily
-    rotate 3
-    maxsize 10M
-    missingok
-    notifempty
-    compress
-    delaycompress
-    copytruncate
-    su root root
+  mkdir -p "$PROJECT_DIR/monitor"
+  POLICY_TMP=$(mktemp "$PROJECT_DIR/monitor/.log-policy.XXXXXX")
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-log-policy.sh" -o "$POLICY_TMP"
+printf '%s  %s\n' '7b3888377a98bbd14a0d5b8718c78edba67c27acf9dab165ebbaf96910d8a9d1' "$POLICY_TMP" | sha256sum -c - >/dev/null
+  chmod 600 "$POLICY_TMP"
+  mv -f "$POLICY_TMP" "$PROJECT_DIR/monitor/evolution-log-policy.sh"
+  sh "$PROJECT_DIR/monitor/evolution-log-policy.sh"
 }
-EOF
-  chmod 644 /etc/logrotate.d/vpscloud-evolution
-  if command -v logrotate >/dev/null 2>&1; then
-    if logrotate -d /etc/logrotate.d/vpscloud-evolution >/dev/null 2>&1; then
-      echo "OK: logrotate diario configurado para o log de limpeza."
-    else
-      echo "AVISO: logrotate instalado, mas a configuracao precisa ser revisada."
-    fi
-  else
-    echo "AVISO: logrotate nao instalado; instale o pacote logrotate para ativar a rotacao do log de limpeza."
+install_mkauth_recibo_log_rotation() { :; } # Covered by the unified policy.
+install_integrations() {
+  if [ "${EVOLUTION_INSTALL_MONITOR:-1}" = 1 ]; then
+    /usr/local/sbin/evolution-install-monitor
   fi
-}
-install_mkauth_recibo_log_rotation() {
-  # Auto-detect MK-AUTH Recibo_Evolution. Never change payment data or addon code.
-  # Explicit opt-out for environments that manage this log externally.
-  if [ "${MKAUTH_RECIBO_LOGROTATE:-0}" = "0" ]; then
-    echo "INFO: rotacao de logs do MK-AUTH desativada por MKAUTH_RECIBO_LOGROTATE=0."
-    return
+  if [ -d /opt/mk-auth/admin ] && [ "${EVOLUTION_INSTALL_RECIBO:-1}" = 1 ]; then
+    /usr/local/sbin/evolution-install-recibo
   fi
-  RECIBO_LOG="/opt/mk-auth/dados/Recibo_Evolution/log_pagamentos.txt"
-  if [ ! -f "$RECIBO_LOG" ]; then
-    echo "INFO: log do Recibo_Evolution nao encontrado; configuracao ignorada."
-    return
-  fi
-  if ! command -v logrotate >/dev/null 2>&1 || [ ! -x /usr/sbin/logrotate ]; then
-    echo "AVISO: logrotate nao instalado; configuracao do Recibo_Evolution ignorada."
-    return
-  fi
-  if [ -e /etc/logrotate.d/mkauth-recibo-evolution ]; then
-    echo "AVISO: configuracao anterior em /etc/logrotate.d/mkauth-recibo-evolution; ajuste manualmente para evitar duplicidade."
-    return
-  fi
-  mkdir -p /etc/logrotate-mkauth
-  RECIBO_CONF="/etc/logrotate-mkauth/recibo-evolution"
-  RECIBO_CRON="/etc/cron.d/mkauth-recibo-evolution-logs"
-  if [ -e "$RECIBO_CONF" ] || [ -e "$RECIBO_CRON" ]; then
-    echo "INFO: rotina de logs Recibo_Evolution ja configurada; preservando configuracao existente."
-    return
-  fi
-  cat > "$RECIBO_CONF" <<'EOF'
-/opt/mk-auth/dados/Recibo_Evolution/log_pagamentos.txt {
-    hourly
-    maxsize 10M
-    rotate 72
-    maxage 3
-    missingok
-    notifempty
-    compress
-    copytruncate
-    su www-data www-data
-}
-EOF
-  chmod 644 "$RECIBO_CONF"
-  if ! logrotate -d -s /var/lib/logrotate/mkauth-recibo-evolution.status "$RECIBO_CONF" >/dev/null 2>&1; then
-    rm -f "$RECIBO_CONF"
-    echo "AVISO: validacao do logrotate do Recibo_Evolution falhou; cron nao instalado."
-    return
-  fi
-  cat > "$RECIBO_CRON" <<'EOF'
-7 * * * * root /usr/sbin/logrotate -s /var/lib/logrotate/mkauth-recibo-evolution.status /etc/logrotate-mkauth/recibo-evolution
-EOF
-  chmod 644 "$RECIBO_CRON"
-  echo "OK: rotacao horaria opcional do Recibo_Evolution configurada (retencao ate 3 dias nas rotacoes)."
 }
 install_session_helpers() {
+  HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-recibo.tmp.XXXXXX)
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-install-recibo.sh" -o "$HELPER_TMP"
+printf '%s  %s\n' '571cb17ff18fa08234385aa23755139d05c2ab758d3594c17fcad1ca60e6d7ec' "$HELPER_TMP" | sha256sum -c - >/dev/null
+  chmod 700 "$HELPER_TMP"
+  mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-recibo
+
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-monitor.tmp.XXXXXX)
   if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-install-monitor.sh" -o "$HELPER_TMP" &&
-     printf '%s  %s\n' '0d160ec1d7b0d583d1b0a1350e43ec82ee83f9c3b327142d704b6111842812e1' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
+     printf '%s  %s\n' 'edf7f69013fa6022b1d0ee4e7c558313afb9dca1902a497f72f2259feb00dab1' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
     chmod 700 "$HELPER_TMP"
     mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-monitor
   else
@@ -477,6 +422,7 @@ patch_existing_v2() {
   install_log_rotation
   install_mkauth_recibo_log_rotation
   install_session_helpers
+  install_integrations
   echo "API: HTTP $CODE"
   install_daily_cleanup
   upgrade_existing_api
@@ -637,6 +583,7 @@ install_daily_cleanup
 install_log_rotation
 install_mkauth_recibo_log_rotation
 install_session_helpers
+install_integrations
 
 echo
 echo "Evolution API v2 instalada com sucesso."

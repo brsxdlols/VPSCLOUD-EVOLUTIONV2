@@ -32,7 +32,7 @@ Instalações novas recebem chave global aleatória, armazenada em `evolution-v2
 
 Preserva logo VPSCloud, normalização brasileira, telefone opcional, fallback de clipboard em HTTP e backup do Manager. O botão Chat/+ agora abre conversa para número informado. Recarregue com Ctrl+F5 depois do PATCH. Esse botão foi validado no ambiente acompanhado; o comportamento visual de contatos novos ainda deve ser homologado em outros bundles.
 
-Não há limpeza global automática por padrão. `EVOLUTION_INSTALL_CLEANUP=1` instala somente relatório de armazenamento; não apaga mensagens, imagens Docker, backups, caches ou logs do MK-AUTH. Crons antigos não são removidos silenciosamente: revise-os antes de continuar. Rotação do log Recibo_Evolution é opcional via `MKAUTH_RECIBO_LOGROTATE=1`. Logs de containers novos usam os limites do driver Docker.
+Não há limpeza global automática por padrão. `EVOLUTION_INSTALL_CLEANUP=1` instala somente relatório de armazenamento; não apaga mensagens, imagens Docker, backups, caches ou logs do MK-AUTH. Crons antigos não são removidos silenciosamente: revise-os antes de continuar. Os logs próprios do Recibo Evolution agora usam a política unificada de até sete dias. Logs de containers novos usam os limites do driver Docker.
 
 ## Backup, QR e reconexão assistida
 
@@ -90,3 +90,12 @@ Arquivos: [crítico](assets/alerts/critical.png), [WhatsApp](assets/alerts/whats
 ### Ajuda de configuração do Telegram
 
 Após o login no `/monitor`, o botão **Como criar um bot e grupo** abre o passo a passo de BotFather, criação do grupo, inclusão do bot, obtenção do Chat ID e configuração dos destinos. Os botões **Salvar e testar** gravam os campos preenchidos antes de enviar o teste; se a gravação falhar, o teste não é enviado. O resultado aparece em um aviso fixo na tela.
+
+
+## Recibos e limites de logs
+
+O instalador inclui o monitor no host e o addon Recibo Evolution quando detecta MK-AUTH. Para instalação gerenciada externamente, use `EVOLUTION_INSTALL_MONITOR=0` ou `EVOLUTION_INSTALL_RECIBO=0`. Os auxiliares também ficam disponíveis como `evolution-install-monitor` e `evolution-install-recibo`. Backups são privados e preservados.
+
+No MK-AUTH, abra **Recibos via WhatsApp** no menu ou `/admin/addons/Recibo_Evolution/`. O botão **Editar template da mensagem** permite alterar o recibo e visualizar um exemplo sem envio. Instalação nova mantém o envio automático desligado; revise provedor, instância e template antes de ativar. Não há reenvio automático de resultados incertos. Veja [detalhes do addon](addon/README.md).
+
+Logs próprios do monitor/limpeza/recibos usam até sete rotações, `maxage 7`, compressão e verificação de tamanho a cada cinco minutos (5 MiB por arquivo; daemon Docker 10 MiB). Esse prazo aplica-se às rotações; o arquivo ativo permanece e é limitado por tamanho. Logs dos três contêineres padrão continuam sob Docker, até três arquivos de 10 MiB por contêiner. Não são apagados sessões, mensagens, filas ou backups. Outros logs do MK-AUTH e crescimento do banco precisam de gestão própria. O monitor alerta a partir de 80% de uso de disco; 90% ou menos de 1 GiB livre é crítico. Alertas dependem do host e da rede estarem funcionando.

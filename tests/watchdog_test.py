@@ -16,7 +16,7 @@ spec.loader.exec_module(installer)
 
 class WatchdogTests(unittest.TestCase):
     def setUp(self):
-        logger = patch.object(w.syslog, 'syslog')
+        logger = patch.object(w, 'log_event')
         logger.start()
         self.addCleanup(logger.stop)
     def test_rate_limited_recovery(self):
@@ -126,6 +126,16 @@ class WatchdogTests(unittest.TestCase):
             w.update_alerts(config, state, ['DOCKER_INDISPONIVEL'], 1180)
             w.update_alerts(config, state, ['DOCKER_INDISPONIVEL'], 1240)
             self.assertEqual(send.call_args[0][0]['_alert_image'], 'critical')
+
+    def test_disk_thresholds(self):
+        from collections import namedtuple
+        Usage = namedtuple('Usage', 'total used free')
+        gib = 1024 ** 3
+        for used, free, expected in [(79,21,[]),(80,20,['DISCO_ATENCAO']),(90,10,['DISCO_CRITICO']),(50,.5,['DISCO_CRITICO'])]:
+            with patch.object(w.shutil, 'disk_usage', return_value=Usage(100*gib,used*gib,free*gib)):
+                info, issues = w.disk_status()
+                self.assertEqual(issues, expected)
+                self.assertEqual(info['used_percent'], used)
 
     def test_docker_recreation_preserves_port_mount_and_image(self):
         info = {'Image': 'sha256:existing', 'HostConfig': {'NetworkMode': 'evolution_v2_net', 'PortBindings': {'8080/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '7070'}]}}, 'Config': {'Entrypoint': ['/bin/bash', '-c', '. ./Docker/scripts/deploy_database.sh && npm run start:prod'], 'Cmd': None}, 'Mounts': [{'Type': 'bind', 'Source': '/existing/manager', 'Destination': '/evolution/manager/dist', 'RW': False}]}
