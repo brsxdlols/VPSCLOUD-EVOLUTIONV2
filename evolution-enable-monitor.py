@@ -109,7 +109,7 @@ def main():
             command(['docker', 'rename', API, previous])
             renamed = True
             command(args)
-            probe = "(async()=>{for(const p of ['/', '/ops/monitor/']){let r=await fetch('http://127.0.0.1:8080'+p,{signal:AbortSignal.timeout(3000)});if(r.status!==200)process.exit(1)}})().catch(()=>process.exit(1))"
+            probe = "(async()=>{for(const p of ['/', '/monitor/']){let r=await fetch('http://127.0.0.1:8080'+p,{signal:AbortSignal.timeout(3000)});if(r.status!==200)process.exit(1)}})().catch(()=>process.exit(1))"
             ready = False
             for attempt in range(40):
                 result = subprocess.run(['docker', 'exec', API, 'node', '-e', probe], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
@@ -146,7 +146,7 @@ def main():
         command(['/etc/init.d/cron', 'start'])
     else:
         raise ValueError('Cron nao encontrado; configure um agendador antes de considerar o monitor ativo')
-    print('Monitor instalado. Painel: /ops/monitor/ . Backup: ' + str(backup))
+    print('Monitor instalado. Painel: /monitor/ . Backup: ' + str(backup))
     return 0
 
 

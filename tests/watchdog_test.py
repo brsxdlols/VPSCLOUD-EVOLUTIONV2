@@ -73,6 +73,29 @@ class WatchdogTests(unittest.TestCase):
                 w.update_alerts({}, state, ['API_SEM_RESPOSTA'], now)
             self.assertEqual(send.call_count, 2)
 
+    def test_number_survives_disconnection_and_docker_failure(self):
+        config = {'instances': [{'name': 'MKAUTH', 'enabled': True}]}
+        state = {'last_numbers': {'MKAUTH': {'number': '+5511999990000'}}}
+        with patch.object(w, 'notify', return_value=True) as send:
+            w.update_alerts(config, state, ['WHATSAPP_DESCONECTADO:MKAUTH'], 1000)
+            w.update_alerts(config, state, ['WHATSAPP_DESCONECTADO:MKAUTH'], 1060)
+            self.assertIn('Ultimo numero identificado: +5511999990000', send.call_args[0][1])
+            w.update_alerts(config, state, ['DOCKER_INDISPONIVEL'], 1120)
+            w.update_alerts(config, state, ['DOCKER_INDISPONIVEL'], 1180)
+            self.assertIn('MKAUTH: +5511999990000', send.call_args[0][1])
+
+    def test_health_probe_caches_registered_number(self):
+        def response(args, **kwargs):
+            if args[:2] == ['docker', 'info']:
+                return 0, ''
+            if args[:2] == ['docker', 'inspect']:
+                return 0, 'true'
+            return 0, json.dumps({'api': 200, 'instances': [{'name': 'MKAUTH', 'http': 200, 'state': 'close', 'phone': '+5511999990000'}]})
+        state = {}
+        with patch.object(w, 'run', side_effect=response):
+            self.assertEqual(w.inspect_health({'instances': [{'name': 'MKAUTH', 'enabled': True}]}, state, 1000), ['WHATSAPP_DESCONECTADO:MKAUTH'])
+            self.assertEqual(state['last_numbers']['MKAUTH']['number'], '+5511999990000')
+
     def test_docker_recreation_preserves_port_mount_and_image(self):
         info = {'Image': 'sha256:existing', 'HostConfig': {'NetworkMode': 'evolution_v2_net', 'PortBindings': {'8080/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '7070'}]}}, 'Config': {'Entrypoint': ['/bin/bash', '-c', '. ./Docker/scripts/deploy_database.sh && npm run start:prod'], 'Cmd': None}, 'Mounts': [{'Type': 'bind', 'Source': '/existing/manager', 'Destination': '/evolution/manager/dist', 'RW': False}]}
         args = installer.recreate_args(info, Path('/backup/effective.env'))

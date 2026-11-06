@@ -30,6 +30,7 @@ express.application.use=function(...args){
    try{const c=read(configPath,{}),name=req.body.instance;const target=name?(c.instances||[]).find(x=>x.name===name):c;if(!target)throw Error('Destino nao encontrado');const effective={telegram_bot_token:target.telegram_bot_token||c.telegram_bot_token,telegram_chat_id:target.telegram_chat_id||c.telegram_chat_id};await send(effective,(c.label||'Evolution')+'\nTeste de alertas: '+(name||'Docker / API')+'.');res.json({sent:true})}catch(e){res.status(400).json({error:/^Configure|^Telegram|^Destino/.test(e.message)?e.message:'Nao foi possivel entregar o teste ao Telegram'})}
   });
   router.use((err,req,res,next)=>res.status(400).json({error:'Requisicao invalida'}));
+  original.call(this,'/monitor',router);
   original.call(this,'/ops/monitor',router);
  }
  return original.apply(this,args);

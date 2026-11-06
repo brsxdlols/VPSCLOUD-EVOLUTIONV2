@@ -10,13 +10,13 @@ PROJECT=/opt/vpscloud-evolution-v2
 STAGE=$(mktemp -d "$PROJECT/.monitor-download.XXXXXX")
 trap 'rmdir "$STAGE" 2>/dev/null || true' EXIT
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/monitor-hook.cjs" -o "$STAGE/monitor-hook.cjs"
-printf '%s  %s\n' '5d65c3577ac2bad3b1100545a924082604cebdb9a53c1786fdd9501bdcc52c35' "$STAGE/monitor-hook.cjs" | sha256sum -c - >/dev/null
+printf '%s  %s\n' 'ffbae7f78182842d2f1c36f3e017f73081f23e154380122e661efa6a0215b9a4' "$STAGE/monitor-hook.cjs" | sha256sum -c - >/dev/null
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/monitor.html" -o "$STAGE/monitor.html"
-printf '%s  %s\n' 'f825af6938fa4a6f139a5efd122b3e94c4e4870f0431fec5bbdbcf98809db688' "$STAGE/monitor.html" | sha256sum -c - >/dev/null
+printf '%s  %s\n' 'fa8375da13093daf91e533c20acb5dc96970d0c906f683b3efa1b2b7a93f617a' "$STAGE/monitor.html" | sha256sum -c - >/dev/null
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-watchdog.py" -o "$STAGE/evolution-watchdog.py"
-printf '%s  %s\n' '19af2a0adce2fd1ae6ec6d34f3ffa0038d82e45c6d610b69a15ea01e0def6eb0' "$STAGE/evolution-watchdog.py" | sha256sum -c - >/dev/null
+printf '%s  %s\n' 'fdfb7c58bda1783690c98f18a1cc76377658aeeef7583483a4c35da85df5f2f1' "$STAGE/evolution-watchdog.py" | sha256sum -c - >/dev/null
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-enable-monitor.py" -o "$STAGE/evolution-enable-monitor.py"
-printf '%s  %s\n' '41131b119d4dde28a5ba9b21a91438b3aa5d22de7e0c49f249fa668c5b43ab6a' "$STAGE/evolution-enable-monitor.py" | sha256sum -c - >/dev/null
+printf '%s  %s\n' '43eb7ca92268ea5cd6af61c6084f34bc951bea47467e3074f391fe42a06435e6' "$STAGE/evolution-enable-monitor.py" | sha256sum -c - >/dev/null
 MONITOR="$PROJECT/monitor"
 mkdir -p "$MONITOR"
 chmod 700 "$MONITOR"

@@ -92,9 +92,9 @@ def inspect_health(config, state, now):
         return issues
     instances = [x['name'] for x in config.get('instances', []) if x.get('enabled')]
     # API credentials stay inside the existing container; only state is returned.
-    probe = """(async()=>{try{const h={apikey:process.env.AUTHENTICATION_API_KEY};const root=await fetch('http://127.0.0.1:8080/',{signal:AbortSignal.timeout(4000)});const out={api:root.status,instances:[]};for(const name of JSON.parse(process.env.HEALTH_INSTANCES)){const r=await fetch('http://127.0.0.1:8080/instance/connectionState/'+encodeURIComponent(name),{headers:h,signal:AbortSignal.timeout(4000)});const o=await r.json();out.instances.push({name,http:r.status,state:o.instance?.state||'unknown'})}console.log(JSON.stringify(out))}catch{process.exit(1)}})()"""
+    probe = """(async()=>{try{const h={apikey:process.env.AUTHENTICATION_API_KEY};const root=await fetch('http://127.0.0.1:8080/',{signal:AbortSignal.timeout(4000)});const out={api:root.status,instances:[]};let metadata=[];try{const mr=await fetch('http://127.0.0.1:8080/instance/fetchInstances',{headers:h,signal:AbortSignal.timeout(4000)});if(mr.ok)metadata=await mr.json()}catch{}for(const name of JSON.parse(process.env.HEALTH_INSTANCES)){const r=await fetch('http://127.0.0.1:8080/instance/connectionState/'+encodeURIComponent(name),{headers:h,signal:AbortSignal.timeout(4000)});const o=await r.json();const entry=Array.isArray(metadata)?metadata.find(x=>(x.name||x.instance?.instanceName)===name):null;const jid=entry?.ownerJid||'';const phone=/^[0-9]{8,15}(?::[0-9]+)?@s\.whatsapp\.net$/.test(jid)?'+'+jid.split('@')[0].split(':')[0]:null;out.instances.push({name,http:r.status,state:o.instance?.state||'unknown',phone})}console.log(JSON.stringify(out))}catch{process.exit(1)}})()"""
     code, output = run(['docker', 'exec', '-e', 'HEALTH_INSTANCES=' + json.dumps(instances),
-                        'evolution_v2_api', 'node', '-e', probe], timeout=max(10, 5 * len(instances) + 5))
+                        'evolution_v2_api', 'node', '-e', probe], timeout=max(15, 5 * len(instances) + 10))
     if code:
         return ['API_SEM_RESPOSTA']
     try:
@@ -103,7 +103,10 @@ def inspect_health(config, state, now):
         return ['API_RESPOSTA_INVALIDA']
     if result.get('api') != 200:
         return ['API_HTTP_' + str(result.get('api'))]
+    numbers = state.setdefault('last_numbers', {})
     for row in result.get('instances', []):
+        if row.get('phone'):
+            numbers[row['name']] = {'number': row['phone'], 'last_identified': now}
         if row.get('http') != 200:
             issues.append('INSTANCIA_SEM_RESPOSTA:' + row['name'])
         elif row.get('state') != 'open':
@@ -116,6 +119,8 @@ def update_one(config, state, issues, now, boot_grace=False):
     state['issues'] = sorted(issues)
     state['healthy'] = not bool(issues)
     label = str(config.get('label', 'MK-AUTH / Evolution'))
+    if config.get('_phone_line'):
+        label += '\n' + config['_phone_line']
     if issues:
         state['failures'] = state.get('failures', 0) + 1
         key = ', '.join(sorted(issues))
@@ -137,7 +142,12 @@ def update_alerts(config, state, issues, now, boot_grace=False):
     state.update(last_check=now, issues=sorted(issues), healthy=not bool(issues))
     conditions = state.setdefault('conditions', {})
     global_issues = [x for x in issues if not x.startswith(('WHATSAPP_', 'INSTANCIA_'))]
-    update_one(config, conditions.setdefault('docker_api', {}), global_issues, now, boot_grace)
+    general = dict(config)
+    known = state.get('last_numbers', {})
+    lines = [x['name'] + ': ' + known[x['name']]['number'] for x in config.get('instances', []) if x.get('enabled') and x['name'] in known]
+    if lines:
+        general['_phone_line'] = 'Ultimos numeros identificados:\n' + '\n'.join(lines)
+    update_one(general, conditions.setdefault('docker_api', {}), global_issues, now, boot_grace)
     if global_issues:
         return
     for item in config.get('instances', []):
@@ -146,6 +156,9 @@ def update_alerts(config, state, issues, now, boot_grace=False):
         name = item['name']
         target = dict(config)
         target['label'] = config.get('label', 'Evolution') + ' / ' + name
+        number = state.get('last_numbers', {}).get(name, {}).get('number')
+        disconnected = any(x.endswith(':' + name) for x in issues)
+        target['_phone_line'] = (('Ultimo numero identificado: ' if disconnected else 'WhatsApp: ') + number) if number else 'WhatsApp: numero ainda nao identificado'
         target['telegram_bot_token'] = item.get('telegram_bot_token') or config.get('telegram_bot_token', '')
         target['telegram_chat_id'] = item.get('telegram_chat_id') or config.get('telegram_chat_id', '')
         per_instance = [x for x in issues if x.endswith(':' + name) and x.startswith(('WHATSAPP_', 'INSTANCIA_'))]
