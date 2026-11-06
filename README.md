@@ -78,3 +78,10 @@ node tests/installer.test.cjs
 Testes cobrem sintaxe POSIX, diagnóstico sem mutação, V1, volumes órfãos, nomes distintos, API parada, ENV ausente, rede distinta, estado parcial, confirmação do reparo e patch do Manager. Não executam instalação real nem enviam WhatsApp. Leia [operação e recuperação](docs/OPERACAO-SEGURA.md).
 
 Os arquivos legados `install.sh` e `patch-update-v237.sh` não compõem este fluxo revisado; não execute esses atalhos como alternativa. Nenhuma alteração foi publicada diretamente na `main` por esta revisão.
+
+
+### Imagens dos alertas
+
+O monitor envia cartões PNG junto da legenda com servidor, instância, número e motivo: vermelho para Docker/API indisponível, amarelo para WhatsApp desconectado e verde para recuperação. As imagens ficam no host e não dependem da API Docker para serem enviadas. Se o envio da foto falhar ou o arquivo não estiver disponível, o monitor tenta entregar o aviso em texto.
+
+Arquivos: [crítico](assets/alerts/critical.png), [WhatsApp](assets/alerts/whatsapp.png) e [recuperação](assets/alerts/recovery.png). O botão de teste do painel continua sendo uma mensagem de texto; as imagens são aplicadas aos eventos automáticos.

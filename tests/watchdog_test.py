@@ -2,6 +2,7 @@ import importlib.util
 import json
 from pathlib import Path
 import unittest
+import tempfile
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,6 +96,36 @@ class WatchdogTests(unittest.TestCase):
         with patch.object(w, 'run', side_effect=response):
             self.assertEqual(w.inspect_health({'instances': [{'name': 'MKAUTH', 'enabled': True}]}, state, 1000), ['WHATSAPP_DESCONECTADO:MKAUTH'])
             self.assertEqual(state['last_numbers']['MKAUTH']['number'], '+5511999990000')
+
+    def test_photo_contains_caption_and_falls_back_to_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'assets').mkdir()
+            (root / 'assets/critical.png').write_bytes(b'PNG-test-only')
+            config = {'telegram_bot_token': 'fake-token', 'telegram_chat_id': '-100', '_alert_image': 'critical'}
+            with patch.object(w, 'STATE_DIR', root), patch.object(w, 'telegram_request', return_value=True) as send:
+                self.assertTrue(w.notify(config, 'Teste com numero +5511999990000'))
+                self.assertEqual(send.call_args[0][1], 'sendPhoto')
+                self.assertIn(b'+5511999990000', send.call_args[0][2])
+                self.assertIn(b'PNG-test-only', send.call_args[0][2])
+                self.assertEqual(send.call_count, 1)
+            with patch.object(w, 'STATE_DIR', root), patch.object(w, 'telegram_request', side_effect=[False, True]) as send:
+                self.assertTrue(w.notify(config, 'Alerta'))
+                self.assertEqual([x[0][1] for x in send.call_args_list], ['sendPhoto', 'sendMessage'])
+
+    def test_correct_photo_is_selected_and_recovery_scope_is_accurate(self):
+        state = {}
+        config = {'instances': [{'name': 'MKAUTH', 'enabled': True}]}
+        with patch.object(w, 'notify', return_value=True) as send:
+            w.update_alerts(config, state, ['WHATSAPP_DESCONECTADO:MKAUTH'], 1000)
+            w.update_alerts(config, state, ['WHATSAPP_DESCONECTADO:MKAUTH'], 1060)
+            self.assertEqual(send.call_args[0][0]['_alert_image'], 'whatsapp')
+            w.update_alerts(config, state, [], 1120)
+            self.assertEqual(send.call_args[0][0]['_alert_image'], 'recovery')
+            self.assertIn('WhatsApp da instancia conectado', send.call_args[0][1])
+            w.update_alerts(config, state, ['DOCKER_INDISPONIVEL'], 1180)
+            w.update_alerts(config, state, ['DOCKER_INDISPONIVEL'], 1240)
+            self.assertEqual(send.call_args[0][0]['_alert_image'], 'critical')
 
     def test_docker_recreation_preserves_port_mount_and_image(self):
         info = {'Image': 'sha256:existing', 'HostConfig': {'NetworkMode': 'evolution_v2_net', 'PortBindings': {'8080/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '7070'}]}}, 'Config': {'Entrypoint': ['/bin/bash', '-c', '. ./Docker/scripts/deploy_database.sh && npm run start:prod'], 'Cmd': None}, 'Mounts': [{'Type': 'bind', 'Source': '/existing/manager', 'Destination': '/evolution/manager/dist', 'RW': False}]}

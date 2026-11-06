@@ -10,6 +10,7 @@ import syslog
 import time
 import urllib.parse
 import urllib.request
+import uuid
 
 CONFIG = Path('/opt/vpscloud-evolution-v2/monitor/config.json')
 STATE_DIR = Path('/opt/vpscloud-evolution-v2/monitor')
@@ -38,23 +39,49 @@ def atomic_json(path, value):
     os.replace(str(tmp), str(path))
 
 
+def telegram_request(token, method, data, content_type):
+    try:
+        req = urllib.request.Request(
+            'https://api.telegram.org/bot' + token + '/' + method,
+            data=data, headers={'Content-Type': content_type}, method='POST')
+        with urllib.request.urlopen(req, timeout=20) as response:
+            return json.load(response).get('ok') is True
+    except Exception:
+        # URLs/exceptions can contain the token. Never write them to logs.
+        return False
+
+
 def notify(config, text):
     token = config.get('telegram_bot_token', '')
     chat = config.get('telegram_chat_id', '')
     if not token or not chat:
         syslog.syslog(syslog.LOG_WARNING, 'Evolution: Telegram ainda nao configurado')
         return False
-    try:
-        req = urllib.request.Request(
-            'https://api.telegram.org/bot' + token + '/sendMessage',
-            data=urllib.parse.urlencode({'chat_id': chat, 'text': text}).encode(),
-            method='POST')
-        with urllib.request.urlopen(req, timeout=10) as response:
-            return json.load(response).get('ok') is True
-    except Exception:
-        # Exception strings/URLs can include the token; deliberately never log them.
-        syslog.syslog(syslog.LOG_ERR, 'Evolution: falha ao entregar alerta Telegram')
-        return False
+    kind = config.get('_alert_image', '')
+    if kind in ('critical', 'whatsapp', 'recovery'):
+        image = STATE_DIR / 'assets' / (kind + '.png')
+        if image.is_file():
+            try:
+                boundary = 'EvolutionAlert' + uuid.uuid4().hex
+                caption = text if len(text) <= 1024 else text[:900] + '\n(Detalhes completos nas mensagens seguintes.)'
+                parts = []
+                for name, value in [('chat_id', str(chat)), ('caption', caption)]:
+                    parts.append(('--' + boundary + '\r\nContent-Disposition: form-data; name="' + name + '"\r\n\r\n' + value + '\r\n').encode())
+                parts.append(('--' + boundary + '\r\nContent-Disposition: form-data; name="photo"; filename="' + kind + '.png"\r\nContent-Type: image/png\r\n\r\n').encode())
+                parts.extend([image.read_bytes(), ('\r\n--' + boundary + '--\r\n').encode()])
+                if telegram_request(token, 'sendPhoto', b''.join(parts), 'multipart/form-data; boundary=' + boundary):
+                    if len(text) <= 1024:
+                        return True
+                else:
+                    syslog.syslog(syslog.LOG_WARNING, 'Evolution: imagem nao entregue; tentando alerta em texto')
+            except OSError:
+                syslog.syslog(syslog.LOG_WARNING, 'Evolution: imagem indisponivel; tentando alerta em texto')
+    for start in range(0, len(text), 3900):
+        data = urllib.parse.urlencode({'chat_id': chat, 'text': text[start:start + 3900]}).encode()
+        if not telegram_request(token, 'sendMessage', data, 'application/x-www-form-urlencoded'):
+            syslog.syslog(syslog.LOG_ERR, 'Evolution: falha ao entregar alerta Telegram')
+            return False
+    return True
 
 
 def attempt(state, key, command, now):
@@ -127,13 +154,18 @@ def update_one(config, state, issues, now, boot_grace=False):
         syslog.syslog(syslog.LOG_WARNING, 'Evolution: ' + key)
         due = (key != state.get('alert_key') or now - state.get('last_alert', 0) >= 1800)
         if state['failures'] >= 2 and due and not boot_grace:
-            if notify(config, label + '\nALERTA: ' + key + '\nCobrancas podem nao estar sendo enviadas. Verifique a instancia.'):
+            target = dict(config)
+            target['_alert_image'] = 'whatsapp' if all(x.startswith(('WHATSAPP_', 'INSTANCIA_')) for x in issues) else 'critical'
+            if notify(target, label + '\nALERTA: ' + key + '\nCobrancas podem nao estar sendo enviadas. Verifique a instancia.'):
                 state['alert_key'] = key
                 state['last_alert'] = now
     else:
         state['failures'] = 0
         if state.get('alert_key'):
-            if notify(config, label + '\nRECUPERADO: Docker, API e WhatsApp respondem normalmente. Isso nao valida entrega de cobrancas anteriores.'):
+            target = dict(config)
+            target['_alert_image'] = 'recovery'
+            recovered = 'WhatsApp da instancia conectado.' if config.get('_scope') == 'instance' else 'Docker e API respondem normalmente.'
+            if notify(target, label + '\nRECUPERADO: ' + recovered + ' Isso nao valida entrega de cobrancas anteriores.'):
                 state['alert_key'] = ''
                 state['last_alert'] = now
 
@@ -155,6 +187,7 @@ def update_alerts(config, state, issues, now, boot_grace=False):
             continue
         name = item['name']
         target = dict(config)
+        target['_scope'] = 'instance'
         target['label'] = config.get('label', 'Evolution') + ' / ' + name
         number = state.get('last_numbers', {}).get(name, {}).get('number')
         disconnected = any(x.endswith(':' + name) for x in issues)
