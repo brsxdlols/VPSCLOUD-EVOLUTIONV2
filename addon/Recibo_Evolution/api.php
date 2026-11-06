@@ -9,6 +9,10 @@ ob_end_clean();
 require_once __DIR__.'/common.php';recibo_post();
 try {
     $action=isset($_POST['action'])?$_POST['action']:'';
+    if ($action==='set_receipts_enabled') {
+        $s=recibo_settings();$s['receipts_enabled']=($_POST['enabled'] ?? '')==='1';recibo_save($s);
+        recibo_json(array('message'=>$s['receipts_enabled']?'Envios de comprovantes ativados. O agendamento configurado sera respeitado.':'Envios de comprovantes desativados. Configuracoes preservadas. Um envio que ja estava em andamento pode concluir.','enabled'=>$s['receipts_enabled']));
+    }
     if ($action==='save') {
         $s=recibo_settings();$url=trim($_POST['api_url']);$u=parse_url($url);
         if (!$u || !isset($u['scheme'],$u['host']) || !in_array($u['scheme'],array('http','https'),true) || isset($u['user']) || isset($u['pass']) || preg_match('/[\r\n]/',$url)) throw new Exception('URL da API invalida.');
@@ -48,6 +52,16 @@ try {
         $out=recibo_http($s,'/message/sendText/'.rawurlencode($s['instance']),array('number'=>$phone,'text'=>recibo_test_message($s)));
         $status=recibo_outcome($out);
         recibo_json(array('message'=>$status===1?'Teste aceito pela API. Confira no numero informado. A fila de recibos nao foi alterada.':($status===2?'Resultado incerto. Confira o numero de teste antes de repetir. A fila nao foi alterada.':'Teste recusado pela API. Confira a conexao. A fila nao foi alterada.')));
+    }
+    if ($action==='list_retro') {
+        $db=recibo_db();try{$rows=recibo_retro_list($db,$_POST['days'] ?? 0);}finally{$db->close();}
+        recibo_json(array('message'=>'Selecione um registro para enviar individualmente. Ja aceitos pela API e envios em revisao ficam excluidos.','rows'=>$rows));
+    }
+    if ($action==='send_retro') {
+        if(($_POST['confirm_retro'] ?? '')!=='ENVIAR_UM')throw new Exception('Confirme o envio individual retroativo.');
+        $days=(int)($_POST['days'] ?? 0);$id=(int)($_POST['id'] ?? 0);recibo_candidate_where($days,$id);
+        if(!$days)throw new Exception('Escolha 1, 2 ou 3 dias anteriores.');
+        session_write_close();$db=recibo_db();try{$out=recibo_run($db,true,1,$days,$id);}finally{$db->close();}recibo_json($out);
     }
     if ($action==='run') { session_write_close();$db=recibo_db();$out=recibo_run($db,true,1);$db->close();recibo_json($out); }
     if ($action==='discard_pending') {

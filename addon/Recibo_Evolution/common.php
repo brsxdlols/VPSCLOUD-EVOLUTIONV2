@@ -16,7 +16,7 @@ function recibo_post() {
 }
 function recibo_json($value, $status = 200) { http_response_code($status); header('Content-Type: application/json; charset=utf-8'); echo json_encode($value, JSON_UNESCAPED_UNICODE); exit; }
 function recibo_defaults() {
-    return array('api_url'=>'http://127.0.0.1:7070','instance'=>'MKAUTH','token'=>'','provider'=>'Seu provedor','enabled'=>false,'interval'=>5,'retention_days'=>0,
+    return array('api_url'=>'http://127.0.0.1:7070','instance'=>'MKAUTH','token'=>'','provider'=>'Seu provedor','receipts_enabled'=>true,'enabled'=>false,'interval'=>5,'retention_days'=>0,
         'template'=>"💵 *CONFIRMAÇÃO DE PAGAMENTO*\n\n👤 *Cliente*: {cliente}\n📄 *ID do pagamento*: {id_pagamento}\n📑 *CPF/CNPJ*: {cpf_cnpj}\n✅ *Pagamento recebido em*: {data_pagamento}\n📅 *Vencimento*: {data_vencimento}\n💰 *Valor da fatura*: R$ {valor}\n💸 *Valor pago*: R$ {valor_pago}\n👤 *Recebido por*: {coletor}\n💳 *Forma de pagamento*: {forma_pagamento}\n\n*Atenciosamente, {provedor}* 🤝\n_Mensagem gerada automaticamente pelo sistema._");
 }
 function recibo_native_connection($items) {
@@ -92,10 +92,21 @@ function recibo_simulate_discard($db,$scope) {
     if(!$q)throw new Exception('Fila indisponivel.');
     return (int)$q->fetch_assoc()['total'];
 }
+function recibo_candidate_where($retroDays=0,$id=0) {
+    $retroDays=(int)$retroDays;$id=(int)$id;
+    if($retroDays===0)return 'p.envio=0 AND p.datapag >= CURDATE() AND p.datapag < CURDATE()+INTERVAL 1 DAY';
+    if($retroDays<1 || $retroDays>3 || $id<1)throw new Exception('Selecione um recibo retroativo de 1 a 3 dias.');
+    return 'p.envio IN (0,4) AND p.datapag >= CURDATE()-INTERVAL '.$retroDays.' DAY AND p.datapag < CURDATE() AND p.id='.$id;
+}
+function recibo_retro_list($db,$days) {
+    $days=(int)$days;if($days<1||$days>3)throw new Exception('Escolha 1, 2 ou 3 dias anteriores.');
+    $q=$db->query('SELECT id,datapag,valorpag FROM brl_pago WHERE envio IN (0,4) AND datapag >= CURDATE()-INTERVAL '.$days.' DAY AND datapag < CURDATE() ORDER BY datapag DESC,id DESC LIMIT 100');
+    if(!$q)throw new Exception('Fila indisponivel.');$rows=array();while($r=$q->fetch_assoc())$rows[]=$r;return $rows;
+}
 function recibo_simulate_next($db) {
-    $q=$db->query("SELECT p.id,c.nome,c.celular,c.zap,c.cli_ativado FROM brl_pago p LEFT JOIN sis_cliente c ON c.login=p.login WHERE p.envio=0 ORDER BY p.id LIMIT 1");
+    $q=$db->query("SELECT p.id,c.nome,c.celular,c.zap,c.cli_ativado FROM brl_pago p LEFT JOIN sis_cliente c ON c.login=p.login WHERE ".recibo_candidate_where()." ORDER BY p.id LIMIT 1");
     if(!$q)throw new Exception('Fila indisponivel.');$row=$q->fetch_assoc();
-    if(!$row)return 'Simulacao: nenhum recibo pendente. Nada foi alterado ou enviado.';
+    if(!$row)return 'Simulacao: nenhum recibo pendente do dia atual. Anteriores nao entram no envio normal. Nada foi alterado ou enviado.';
     $eligible=recibo_phone($row['celular']?:'') && $row['zap']!=='nao' && $row['cli_ativado']!=='n' && $row['nome'];
     return 'Simulacao: proximo ID '.(int)$row['id'].($eligible?' esta apto pela verificacao de contato.':' seria ignorado por contato/preferencia.').' Nenhum envio, alteracao de fila ou chamada ao WhatsApp. A conexao nao foi testada.';
 }
@@ -112,8 +123,11 @@ function recibo_discard_pending($db,$scope='all') {
         return $db->affected_rows;
     } finally { $db->query("SELECT RELEASE_LOCK('vpscloud_recibo_evolution')"); }
 }
-function recibo_run($db,$manual=false,$limit=5) {
-    $s=recibo_settings(); if (!$manual && !$s['enabled']) return array('status'=>'paused','message'=>'Envio automatico desativado.','sent'=>0);
+function recibo_run($db,$manual=false,$limit=1,$retroDays=0,$targetId=0) {
+    if($retroDays && !$manual)throw new Exception('Retroativo exige envio manual individual.');
+    $where=recibo_candidate_where($retroDays,$targetId);
+    $s=recibo_settings(); if(empty($s['receipts_enabled']))return array('status'=>'paused','sent'=>0,'message'=>'Envios de comprovantes desativados no controle principal. Nenhuma mensagem enviada.');
+    if (!$manual && !$s['enabled']) return array('status'=>'paused','message'=>'Envio automatico desativado.','sent'=>0);
     if (empty($s['token']) || empty($s['api_url']) || empty($s['instance'])) throw new Exception('Configure a API e a instancia primeiro.');
     $lock=$db->query("SELECT GET_LOCK('vpscloud_recibo_evolution',0) AS acquired");
     if (!$lock || (int)$lock->fetch_assoc()['acquired']!==1) return array('status'=>'busy','message'=>'Outra execucao ja esta em andamento.','sent'=>0);
@@ -125,18 +139,23 @@ function recibo_run($db,$manual=false,$limit=5) {
         if ($health['http']!==200 || empty($health['body']['instance']['state']) || $health['body']['instance']['state']!=='open') {
             recibo_log(0,'PAUSED_INSTANCE_NOT_OPEN'); return array('status'=>'paused','sent'=>0,'message'=>'Instancia desconectada ou API indisponivel. Nenhum recibo enviado.');
         }
-        $limit=max(1,min(20,(int)$limit));
-        $sql="SELECT p.*, c.nome, c.celular, c.cpf_cnpj, c.zap, c.cli_ativado FROM brl_pago p LEFT JOIN sis_cliente c ON c.login=p.login WHERE p.envio=0 ORDER BY p.id LIMIT ".$limit;
+        // Resume only today's payments. Keep historical records, never release a backlog.
+        if(!$retroDays){
+            if(!$db->query('UPDATE brl_pago SET envio=4 WHERE '.recibo_discard_where('before_today')))throw new Exception('Nao foi possivel proteger a retomada. Nenhum envio executado.');
+            if($db->affected_rows)recibo_log(0,'EXPIRED_OLDER_PENDING COUNT='.$db->affected_rows);
+        }
+        $limit=1;
+        $sql="SELECT p.*, c.nome, c.celular, c.cpf_cnpj, c.zap, c.cli_ativado FROM brl_pago p LEFT JOIN sis_cliente c ON c.login=p.login WHERE ".$where." ORDER BY p.id LIMIT ".$limit;
         $rows=$db->query($sql); if (!$rows) throw new Exception('Fila indisponivel. Verifique a instalacao.');
         $start=time();$sent=0;$review=0;$failed=0;
         while ($row=$rows->fetch_assoc()) {
             if (time()-$start>=40) break;
             $id=(int)$row['id'];$phone=recibo_phone($row['celular']?:'');
             if (!$phone || $row['zap']==='nao' || $row['cli_ativado']==='n' || !$row['nome']) {
-                $db->query("UPDATE brl_pago SET envio=3 WHERE id=$id AND envio=0");recibo_log($id,'SKIPPED_CONTACT_OR_PREFERENCE');$failed++;continue;
+                $db->query("UPDATE brl_pago SET envio=3 WHERE id=$id AND ".str_replace('p.','',$where));recibo_log($id,'SKIPPED_CONTACT_OR_PREFERENCE');$failed++;continue;
             }
             // Persist the claim before the HTTP request. A crash cannot cause blind retry.
-            if (!$db->query("UPDATE brl_pago SET envio=2 WHERE id=$id AND envio=0") || $db->affected_rows!==1) continue;
+            if (!$db->query("UPDATE brl_pago SET envio=2 WHERE id=$id AND ".str_replace('p.','',$where)) || $db->affected_rows!==1) continue;
             $message=recibo_render($s['template'],recibo_values($row,$s));
             $r=recibo_http($s,'/message/sendText/'.rawurlencode($s['instance']),array('number'=>$phone,'text'=>$message));
             $status=recibo_outcome($r);$messageId=$status===1?(string)$r['body']['key']['id']:'';

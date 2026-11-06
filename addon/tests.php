@@ -19,4 +19,8 @@ $rejected=false;try{recibo_native_connection(array('wapp_servidor'=>'outro'));}c
 check(strpos(recibo_discard_where('before_today'),'datapag < CURDATE()')!==false,'discard older scope uses database calendar day');
 $bad=false;try{recibo_discard_where('invalid');}catch(Exception $e){$bad=true;}check($bad,'unknown discard scope rejected');
 $msg=recibo_test_message(recibo_defaults());check(strpos($msg,'SEM VALOR DE RECIBO')!==false && strpos($msg,'Cliente de exemplo')!==false,'test message uses explicitly fictitious data');
+check(strpos(recibo_candidate_where(),'p.datapag >= CURDATE()')!==false,'normal receipts restricted to today');
+check(strpos(recibo_candidate_where(3,17),'p.id=17')!==false && strpos(recibo_candidate_where(3,17),'IN (0,4)')!==false,'retro selector requires individual unsent receipt');
+$bad=false;try{recibo_candidate_where(4,17);}catch(Exception $e){$bad=true;}check($bad,'retro older than three days rejected');
+$s=recibo_settings();$s['receipts_enabled']=false;recibo_save($s);$off=recibo_run(new stdClass(),true,1,2,17);check($off['status']==='paused','master disable stops manual retro before database or network access');
 foreach(glob($tmp.'/*')as$f)unlink($f);rmdir($tmp);echo "No database or WhatsApp request executed.\n";
