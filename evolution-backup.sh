@@ -42,6 +42,7 @@ mkdir -p "$B"
 docker inspect "$API" "$PG" "$REDIS" > "$B/containers.json"
 if [ -f "$PROJECT_DIR/evolution-v2.env" ]; then cp -p "$PROJECT_DIR/evolution-v2.env" "$B/"; fi
 if [ -d "$PROJECT_DIR/manager-dist" ]; then tar -C "$PROJECT_DIR" -cf "$B/manager.tar" manager-dist; fi
+if [ -d "$PROJECT_DIR/monitor" ]; then tar -C "$PROJECT_DIR" -cf "$B/monitor.tar" monitor; fi
 IMAGE=$(docker inspect --format '{{.Image}}' "$API")
 docker image save "$IMAGE" > "$B/api-image.tar"
 # Never print the credential; retrieve from the effective container environment.

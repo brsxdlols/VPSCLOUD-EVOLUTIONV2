@@ -36,6 +36,26 @@ Não há limpeza global automática por padrão. `EVOLUTION_INSTALL_CLEANUP=1` i
 
 ## Backup, QR e reconexão assistida
 
+## Inicialização e alertas Telegram
+
+API, PostgreSQL e Redis novos usam `--restart=always`; o PATCH também atualiza essa política nos três containers atuais, sem reiniciá-los. A política antiga `on-failure` da API não garantia retorno depois do reinício do daemon. A política não substitui a habilitação do serviço Docker no init do host.
+
+Depois de instalar os auxiliares, execute, em janela de manutenção:
+
+```sh
+evolution-install-monitor
+```
+
+Esse auxiliar requer Python 3, habilita Docker e cron em SysV/Devuan ou systemd e instala a página `/ops/monitor/` no mesmo acesso da API. Na primeira execução há uma breve parada da API para adicionar um mount e carregar o módulo do painel. O container anterior é preservado com reinício desativado; imagem, ambiente, portas e mounts existentes são preservados no layout suportado. Topologias diferentes são recusadas.
+
+Entre na página com a chave global da API. Configure token e chat Telegram para Docker/API, escolha as instâncias monitoradas e, se necessário, destinos diferentes para cada uma. Salve e use os botões de teste. Tokens não são retornados pela API e ficam em arquivo de configuração protegido; a chave de login permanece somente na memória da página. Utilize o acesso HTTPS do seu ambiente para transmitir credenciais.
+
+O cron verifica a cada minuto, avisa após duas falhas consecutivas e repete a cada 30 minutos. A recuperação envia um aviso. Pode iniciar Docker ausente e os três containers parados; não reinicia um daemon vivo travado, não recria containers e não renova sessões. Alertas precisam de servidor, cron, rede e Telegram funcionando; desligamento total do host exige monitor externo.
+
+Para manutenção planejada: `touch /run/vpscloud-evolution-maintenance`; ao concluir, `rm /run/vpscloud-evolution-maintenance`. Backups e o instalador usam locks que também pausam o watchdog. Estado local: `python3 /opt/vpscloud-evolution-v2/monitor/evolution-watchdog.py --status`.
+
+## Backup, QR e reconexão assistida
+
 ```sh
 evolution-backup
 evolution-qr-terminal MKAUTH

@@ -163,6 +163,15 @@ EOF
   echo "OK: rotacao horaria opcional do Recibo_Evolution configurada (retencao ate 3 dias nas rotacoes)."
 }
 install_session_helpers() {
+  HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-monitor.tmp.XXXXXX)
+  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-install-monitor.sh" -o "$HELPER_TMP" &&
+     printf '%s  %s\n' '826d145b70820e76f7489e51aeaf4a519fe7260811bcaf80ddba5035c8159fa6' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
+    chmod 700 "$HELPER_TMP"
+    mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-monitor
+  else
+    rm -f "$HELPER_TMP"
+    echo "AVISO: auxiliar de monitoramento nao instalado; download ou hash invalido."
+  fi
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-qr-terminal.tmp.XXXXXX)
   if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-qr-terminal.sh" -o "$HELPER_TMP" &&
      printf '%s  %s\n' '8ce1b975ea9765dd70cc92610e2c786cd6eb609bba34df264aa1206553502740' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
@@ -174,7 +183,7 @@ install_session_helpers() {
   fi
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-backup.tmp.XXXXXX)
   if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-backup.sh" -o "$HELPER_TMP" &&
-     printf '%s  %s\n' 'e9c70622dec434165a3d2788b67d4c1bb005dacec9b3206435fd27990289c94a' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
+     printf '%s  %s\n' 'e2acebc15d3dac8438f58d127e4a05acc612ce2a14017105ec7384649bccdf28' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
     chmod 700 "$HELPER_TMP"
     mv -f "$HELPER_TMP" /usr/local/sbin/evolution-backup
   else
@@ -416,6 +425,7 @@ patch_existing_v2() {
   for dependency in "$PG_CONTAINER" "$REDIS_CONTAINER"; do
     [ "$(docker inspect --format '{{.State.Running}}' "$dependency")" = true ] || { echo "ERRO: dependencia parada ou ausente."; exit 1; }
   done
+  docker update --restart=always "$API_CONTAINER" "$PG_CONTAINER" "$REDIS_CONTAINER" >/dev/null
   [ -d "$MANAGER_DIR" ] || { echo "ERRO: Manager nao encontrado em $MANAGER_DIR."; exit 1; }
   JS="$(find "$MANAGER_DIR/assets" -maxdepth 1 -type f -name 'index-*.js' | head -n 1)"
   [ -n "$JS" ] && [ -f "$JS" ] || { echo "ERRO: bundle JS do Manager nao encontrado."; exit 1; }
@@ -611,7 +621,7 @@ docker run -d \
   --log-opt max-size=10m \
   --log-opt max-file=3 \
   --name "$API_CONTAINER" \
-  --restart on-failure \
+  --restart always \
   --network "$NETWORK" \
   --env-file "$ENV_FILE" \
   -p "${API_PORT}:8080" \
