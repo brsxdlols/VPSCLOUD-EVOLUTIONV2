@@ -12,6 +12,7 @@ jobs:
         with:
           node-version: '22'
       - run: node tests/installer.test.cjs
+      - run: node tests/monitor-ui.test.cjs
       - run: python3 -m unittest discover -s tests -p '*_test.py' -v
       - name: Validate patches against the pinned Manager image
         run: >-

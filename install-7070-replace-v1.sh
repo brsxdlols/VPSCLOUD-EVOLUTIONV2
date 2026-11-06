@@ -165,7 +165,7 @@ EOF
 install_session_helpers() {
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-monitor.tmp.XXXXXX)
   if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-install-monitor.sh" -o "$HELPER_TMP" &&
-     printf '%s  %s\n' 'cdd7893f0040bba44a8d37fa33e929e4331fff2d804f52cd594ecb2909056f01' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
+     printf '%s  %s\n' '0d160ec1d7b0d583d1b0a1350e43ec82ee83f9c3b327142d704b6111842812e1' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
     chmod 700 "$HELPER_TMP"
     mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-monitor
   else

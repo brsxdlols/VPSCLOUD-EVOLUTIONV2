@@ -85,3 +85,8 @@ Os arquivos legados `install.sh` e `patch-update-v237.sh` não compõem este flu
 O monitor envia cartões PNG junto da legenda com servidor, instância, número e motivo: vermelho para Docker/API indisponível, amarelo para WhatsApp desconectado e verde para recuperação. As imagens ficam no host e não dependem da API Docker para serem enviadas. Se o envio da foto falhar ou o arquivo não estiver disponível, o monitor tenta entregar o aviso em texto.
 
 Arquivos: [crítico](assets/alerts/critical.png), [WhatsApp](assets/alerts/whatsapp.png) e [recuperação](assets/alerts/recovery.png). O botão de teste do painel continua sendo uma mensagem de texto; as imagens são aplicadas aos eventos automáticos.
+
+
+### Ajuda de configuração do Telegram
+
+Após o login no `/monitor`, o botão **Como criar um bot e grupo** abre o passo a passo de BotFather, criação do grupo, inclusão do bot, obtenção do Chat ID e configuração dos destinos. Os botões **Salvar e testar** gravam os campos preenchidos antes de enviar o teste; se a gravação falhar, o teste não é enviado. O resultado aparece em um aviso fixo na tela.

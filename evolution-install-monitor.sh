@@ -13,7 +13,7 @@ mkdir -p "$STAGE/assets"
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/monitor-hook.cjs" -o "$STAGE/monitor-hook.cjs"
 printf '%s  %s\n' 'ffbae7f78182842d2f1c36f3e017f73081f23e154380122e661efa6a0215b9a4' "$STAGE/monitor-hook.cjs" | sha256sum -c - >/dev/null
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/monitor.html" -o "$STAGE/monitor.html"
-printf '%s  %s\n' 'fa8375da13093daf91e533c20acb5dc96970d0c906f683b3efa1b2b7a93f617a' "$STAGE/monitor.html" | sha256sum -c - >/dev/null
+printf '%s  %s\n' '188237ee4c58428aadbe5f7c1ca6f01a8c10909cb861a0c096c36edd5a5e647d' "$STAGE/monitor.html" | sha256sum -c - >/dev/null
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-watchdog.py" -o "$STAGE/evolution-watchdog.py"
 printf '%s  %s\n' 'c49356dabd39eae3755129e4e5d7597168d2c39b42c5b219ee61e320a0c9ae9f' "$STAGE/evolution-watchdog.py" | sha256sum -c - >/dev/null
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-enable-monitor.py" -o "$STAGE/evolution-enable-monitor.py"
