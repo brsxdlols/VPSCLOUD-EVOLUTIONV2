@@ -1,89 +1,60 @@
-# VPSCLOUD Evolution API v2 para MK-Auth
+# Evolution API 2.3.7 — instalador 7070 para MK-AUTH
 
-Instaladores da Evolution API `v2.3.4` para servidores MK-Auth antigos que já possuem Docker, inclusive Docker `18.09`.
+Esta branch contém o instalador revisado `install-7070-replace-v1.sh`, auxiliares de backup e novo pareamento, e correções do Manager. Não utilize os comandos antigos da `main` para instalar esta revisão.
 
-O projeto instala Evolution API v2.3.4, PostgreSQL 15, Redis 7.4, volumes persistentes, Manager com logo local e as correções de telefone opcional e cópia de token por HTTP. A Global API Key padrão é `123456`.
+**Estado:** revisão para instalação controlada e PATCH. Atualização automática de uma imagem diferente permanece bloqueada. Migração V1 → V2 não é automática. Os testes de proteção não substituem homologação completa de instalação, atualização e rollback.
 
-## Escolha do instalador
+## Download e execução
 
-Existem dois modos independentes. Escolha somente um deles.
+Baixe o arquivo para revisá-lo antes de executar:
 
-### 1. Instalação na porta 3100
-
-Depois que a v2 responder HTTP `200`, o instalador remove completamente o contêiner, a imagem e os backups da Evolution v1.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/install.sh -o /root/install-evolution-v2.sh
-chmod +x /root/install-evolution-v2.sh
-sh /root/install-evolution-v2.sh
-```
-
-Acesso: `http://IP_DO_SERVIDOR:3100/manager`. Nesse modo é necessário alterar no MK-Auth a porta da Evolution para `3100`. A v1 é removida completamente.
-
-### 2. Substituição total da v1 na porta 7070
-
-Use este modo para manter o mesmo IP e a mesma porta já configurados no MK-Auth. O instalador prepara PostgreSQL e Redis, remove o contêiner `evolution_api`, seus volumes anônimos, a imagem e os backups da v1, e sobe a v2 na porta `7070`.
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/install-7070-replace-v1.sh -o /root/install-evolution-v2-7070.sh
-chmod +x /root/install-evolution-v2-7070.sh
+```sh
+curl -fL --retry 3 https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/install-7070-replace-v1.sh -o /root/install-evolution-v2-7070.sh
+EVOLUTION_MODE=diagnose sh /root/install-evolution-v2-7070.sh
+# Depois de revisar o inventário e planejar a janela:
 sh /root/install-evolution-v2-7070.sh
 ```
 
-Acesso: `http://IP_DO_SERVIDOR:7070/manager`. Nesse modo não é necessário alterar a porta usada pelo MK-Auth. A v1 é removida completamente.
+Para execução reproduzível, substitua o nome da branch pelo SHA do commit publicado. Dependências: root, Docker funcional, curl, OpenSSL, utilitários POSIX e pelo menos espaço suficiente para imagens, dados e backups. A API é fixada pelo digest testado da imagem 2.3.7. PostgreSQL 15 e Redis 7.4 continuam usando tags; uma instalação nova resolve essas tags no momento do pull. Atualizar essas dependências não faz parte deste instalador.
 
-## Telefone na criação da instância
+## Comportamento
 
-O campo é opcional. Quando preenchido, aceita DDD + número com 8 ou 9 dígitos. O Manager remove espaços, parênteses e hífens e acrescenta `55` para números brasileiros de 10 ou 11 dígitos. Ele não adiciona nem remove o nono dígito. O botão de copiar token possui fallback para HTTP.
+- Sem V2, sem V1 e sem volumes conhecidos: prepara PostgreSQL, Redis e Manager; cria uma única API com o entrypoint original, incluindo migrações.
+- V2 com nomes e topologia esperados: preserva ENV, chave de API, bancos e sessão; aplica PATCH do Manager e instala auxiliares. O patch usa correspondência explícita de código e falha se o bundle não for reconhecido.
+- API parada, backend ausente, volumes órfãos, rede diferente, V1 ou nome de container não padrão: interrompe para recuperação supervisionada.
+- Imagem diferente: pode preparar dump e baixar a imagem, mas não substitui o container. O dump preparatório não é backup completo da autenticação.
 
-## Servidor atrás de NAT
+Nomes suportados: `evolution_v2_api`, `evolution_v2_postgres`, `evolution_v2_redis`. Diretório padrão: `/opt/vpscloud-evolution-v2`. A porta externa é 7070 (`EVOLUTION_PORT` em instalação nova). Para NAT use `EVOLUTION_SERVER_URL=http://ENDERECO_EXTERNO:PORTA`. O instalador não cria encaminhamento no roteador nem muda o MK-AUTH.
 
-Porta 3100:
+Instalações novas recebem chave global aleatória, armazenada em `evolution-v2.env` protegido. Não é impressa no terminal. Instalações existentes preservam a chave; nenhuma rotação silenciosa é feita.
 
-```bash
-EVOLUTION_SERVER_URL=http://IP_PUBLICO:3100 sh /root/install-evolution-v2.sh
+## Manager e manutenção
+
+Preserva logo VPSCloud, normalização brasileira, telefone opcional, fallback de clipboard em HTTP e backup do Manager. O botão Chat/+ agora abre conversa para número informado. Recarregue com Ctrl+F5 depois do PATCH. Esse botão foi validado no ambiente acompanhado; o comportamento visual de contatos novos ainda deve ser homologado em outros bundles.
+
+Não há limpeza global automática por padrão. `EVOLUTION_INSTALL_CLEANUP=1` instala somente relatório de armazenamento; não apaga mensagens, imagens Docker, backups, caches ou logs do MK-AUTH. Crons antigos não são removidos silenciosamente: revise-os antes de continuar. Rotação do log Recibo_Evolution é opcional via `MKAUTH_RECIBO_LOGROTATE=1`. Logs de containers novos usam os limites do driver Docker.
+
+## Backup, QR e reconexão assistida
+
+```sh
+evolution-backup
+evolution-qr-terminal MKAUTH
+# Somente se o reparo foi escolhido e o celular correto está disponível:
+EVOLUTION_CONFIRM_RECONNECT=MKAUTH evolution-reconnect MKAUTH
 ```
 
-Substituição total na porta 7070:
+O backup interrompe brevemente somente a API, gera PostgreSQL e Redis coordenados, preserva configuração, Manager e imagem, e reinicia a API. Verifica catálogo e estrutura RDB. Exige backend Redis padrão. Teste a restauração isolada antes de qualquer atualização. Não execute junto com outro operador alterando a instalação ou com produtores externos escrevendo diretamente nos backends.
 
-```bash
-EVOLUTION_SERVER_URL=http://IP_PUBLICO:7070 sh /root/install-evolution-v2-7070.sh
+A reconexão faz esse backup e depois solicita **logout da sessão escolhida**, sem excluir a instância Evolution. É necessário escanear novo QR. Logout revoga o vínculo no WhatsApp: restaurar o backup não reativa credenciais revogadas. Confira o número remetente antes de liberar automações.
+
+## Validação e limites
+
+No ambiente acompanhado, texto e boleto PDF enviados pelo sistema chegaram legíveis após novo pareamento com outro número na instância original. Isso associa a falha à sessão/conta anterior, mas não identifica o defeito criptográfico exato e não comprova que todo número foi recuperado. Não há reset automático de sessões no instalador.
+
+```sh
+node tests/installer.test.cjs
 ```
 
-## Contêineres e volumes da v2
+Testes cobrem sintaxe POSIX, diagnóstico sem mutação, V1, volumes órfãos, nomes distintos, API parada, ENV ausente, rede distinta, estado parcial, confirmação do reparo e patch do Manager. Não executam instalação real nem enviam WhatsApp. Leia [operação e recuperação](docs/OPERACAO-SEGURA.md).
 
-```text
-evolution_v2_api
-evolution_v2_postgres
-evolution_v2_redis
-
-evolution_v2_postgres_data
-evolution_v2_redis_data
-```
-
-## Limpeza automática de armazenamento
-
-Os dois instaladores configuram uma manutenção diária às `03:25`. Por padrão,
-ela mantém 7 dias de mensagens no PostgreSQL, limita o crescimento dos logs,
-remove imagens Docker não utilizadas há 7 dias e limpa caches e logs do sistema.
-
-Os volumes Docker ativos, as instâncias e as configurações não são apagados. A
-retenção pode ser alterada durante a instalação:
-
-```bash
-EVOLUTION_RETENTION_DAYS=15 sh /root/install-evolution-v2.sh
-```
-
-O cron e o relatório ficam em:
-
-```text
-/etc/cron.d/vpscloud-evolution-cleanup
-/var/log/vpscloud-evolution-cleanup.log
-```
-## Observação de segurança
-
-A chave global `123456` foi definida como padrão operacional solicitado. Recomenda-se restringir a porta escolhida por firewall a endereços confiáveis.
-
-## Licença
-
-Este instalador é distribuído sob a licença MIT. A Evolution API possui sua própria licença e permanece propriedade de seus respectivos autores.
+Os arquivos legados `install.sh` e `patch-update-v237.sh` não compõem este fluxo revisado; não execute esses atalhos como alternativa. Nenhuma alteração foi publicada diretamente na `main` por esta revisão.

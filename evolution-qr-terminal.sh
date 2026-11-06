@@ -1,6 +1,6 @@
 #!/bin/sh
 # Mostra o QR Code da instancia existente pelo endpoint local da Evolution.
-# Nao altera sessoes, containers ou banco de dados.
+# Consulta estado e solicita conexao/QR; nao faz logout nem apaga a instancia.
 set -eu
 CONTAINER="${EVOLUTION_API_CONTAINER:-evolution_v2_api}"
 INSTANCE="${1:-}"
@@ -23,6 +23,11 @@ if (!apikey) {
 }
 (async () => {
   try {
+    const state = await axios.get("http://127.0.0.1:8080/instance/connectionState/" + encodeURIComponent(name), {headers:{apikey},timeout:10000});
+    if (state.data && state.data.instance && state.data.instance.state === "open") {
+      console.log("Instancia ja conectada. Nenhum novo pareamento solicitado.");
+      return;
+    }
     const url = "http://127.0.0.1:8080/instance/connect/" + encodeURIComponent(name);
     const response = await axios.get(url, {
       headers: { apikey },
@@ -46,3 +51,4 @@ if (!apikey) {
   }
 })();
 NODE
+
