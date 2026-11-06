@@ -39,7 +39,7 @@ class ReceiptHTTPTest(unittest.TestCase):
             with socket.socket() as sock:
                 sock.bind(('127.0.0.1', 0)); port = sock.getsockname()[1]
             env = dict(os.environ, RECIBO_DATA_DIR=str(data))
-            php = subprocess.Popen(['php', '-S', '127.0.0.1:%s' % port, '-t', str(folder)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            php = subprocess.Popen(['php', '-d', 'session.save_path='+str(folder), '-S', '127.0.0.1:%s' % port, '-t', str(folder)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             try:
                 for _ in range(100):
                     try:
