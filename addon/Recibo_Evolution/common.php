@@ -4,20 +4,27 @@ define('RECIBO_DATA', getenv('RECIBO_DATA_DIR') ?: '/opt/mk-auth/dados/Recibo_Ev
 function recibo_auth() {
     if (session_status() !== PHP_SESSION_ACTIVE) { session_name('mka'); session_start(); }
     if (empty($_SESSION['mka_logado']) && empty($_SESSION['MKA_Logado'])) {
-        http_response_code(401); exit('Acesso negado. Entre pelo MK-AUTH.');
+        recibo_json(array('error'=>'Sessao expirada ou acesso negado. Entre novamente pelo MK-AUTH e atualize a pagina.'),401);
     }
     if (empty($_SESSION['recibo_csrf'])) $_SESSION['recibo_csrf'] = bin2hex(random_bytes(24));
 }
 function recibo_post() {
     recibo_auth();
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !hash_equals($_SESSION['recibo_csrf'], isset($_POST['csrf']) ? $_POST['csrf'] : '')) {
-        http_response_code(403); exit('Requisicao invalida. Atualize a pagina.');
+        recibo_json(array('error'=>'Requisicao invalida. Atualize a pagina.'),403);
     }
 }
 function recibo_json($value, $status = 200) { http_response_code($status); header('Content-Type: application/json; charset=utf-8'); echo json_encode($value, JSON_UNESCAPED_UNICODE); exit; }
 function recibo_defaults() {
     return array('api_url'=>'http://127.0.0.1:7070','instance'=>'MKAUTH','token'=>'','provider'=>'Seu provedor','enabled'=>false,'interval'=>5,'retention_days'=>0,
         'template'=>"💵 *CONFIRMAÇÃO DE PAGAMENTO*\n\n👤 *Cliente*: {cliente}\n📄 *ID do pagamento*: {id_pagamento}\n📑 *CPF/CNPJ*: {cpf_cnpj}\n✅ *Pagamento recebido em*: {data_pagamento}\n📅 *Vencimento*: {data_vencimento}\n💰 *Valor da fatura*: R$ {valor}\n💸 *Valor pago*: R$ {valor_pago}\n👤 *Recebido por*: {coletor}\n💳 *Forma de pagamento*: {forma_pagamento}\n\n*Atenciosamente, {provedor}* 🤝\n_Mensagem gerada automaticamente pelo sistema._");
+}
+function recibo_native_connection($items) {
+    if (($items['wapp_servidor'] ?? '')!=='evolution2_api') throw new Exception('O servidor WhatsApp do MK-AUTH deve estar configurado como Evolution2 API.');
+    $url=trim($items['wapp_host'] ?? '');if(strpos($url,'://')===false)$url='http://'.$url;
+    $u=parse_url($url);$instance=trim($items['wapp_login'] ?? '');$token=trim($items['wapp_pass'] ?? '');
+    if(!$u || empty($u['host']) || !in_array($u['scheme'] ?? '',array('http','https'),true) || isset($u['user']) || isset($u['pass']) || preg_match('/[\r\n]/',$url.$token) || !$instance || strlen($instance)>100 || !$token)throw new Exception('Servidor WhatsApp incompleto ou invalido no MK-AUTH.');
+    return array('api_url'=>rtrim($url,'/'),'instance'=>$instance,'token'=>$token);
 }
 function recibo_settings() {
     $p=RECIBO_DATA.'/settings.json'; $s=is_file($p)?json_decode(file_get_contents($p),true):array();
@@ -75,6 +82,14 @@ function recibo_outcome($r) {
     if (!$r['error'] && in_array($r['http'],array(200,201),true) && !empty($r['body']['key']['id'])) return 1;
     if (!$r['error'] && $r['http']>=400 && $r['http']<500 && $r['http']!==408) return 3;
     return 2; // Timeout/ambiguous acceptance: require operator review, never resend automatically.
+}
+function recibo_discard_pending($db) {
+    $lock=$db->query("SELECT GET_LOCK('vpscloud_recibo_evolution',0) AS acquired");
+    if(!$lock || (int)$lock->fetch_assoc()['acquired']!==1) throw new Exception('Ha um envio em andamento. Aguarde e tente novamente.');
+    try {
+        if(!$db->query('UPDATE brl_pago SET envio=4 WHERE envio=0')) throw new Exception('Nao foi possivel descartar os pendentes.');
+        return $db->affected_rows;
+    } finally { $db->query("SELECT RELEASE_LOCK('vpscloud_recibo_evolution')"); }
 }
 function recibo_run($db,$manual=false,$limit=5) {
     $s=recibo_settings(); if (!$manual && !$s['enabled']) return array('status'=>'paused','message'=>'Envio automatico desativado.','sent'=>0);

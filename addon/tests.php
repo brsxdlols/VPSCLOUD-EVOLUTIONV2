@@ -13,4 +13,7 @@ check(recibo_outcome(array('error'=>0,'http'=>200,'body'=>array()))===2,'empty H
 check(recibo_outcome(array('error'=>0,'http'=>401,'body'=>array()))===3,'rejected authorization is failure');
 $s=recibo_defaults();$s['token']='mock-token';recibo_save($s);check(recibo_settings()['token']==='mock-token','settings persist outside public folder');
 file_put_contents($tmp.'/test.log',str_repeat('old-line\n',10000)."\nnew-line\n");$tail=recibo_tail($tmp.'/test.log',1024);check(strlen($tail)<=1024&&strpos($tail,'new-line')!==false,'bounded log tail');
+$native=recibo_native_connection(array('wapp_servidor'=>'evolution2_api','wapp_host'=>'192.0.2.10:7070','wapp_login'=>'TESTE','wapp_pass'=>'mock-token'));
+check($native['api_url']==='http://192.0.2.10:7070' && $native['instance']==='TESTE' && $native['token']==='mock-token','native gateway maps server instance and token');
+$rejected=false;try{recibo_native_connection(array('wapp_servidor'=>'outro'));}catch(Exception $e){$rejected=true;}check($rejected,'native import rejects unsupported gateway');
 foreach(glob($tmp.'/*')as$f)unlink($f);rmdir($tmp);echo "No database or WhatsApp request executed.\n";

@@ -43,8 +43,9 @@ def menu(source):
 ;(function(){
  if(typeof add_menu==='undefined'||window.__vpscloudReciboMenu)return;
  window.__vpscloudReciboMenu=true;
- var item=JSON.stringify({plink:window.location.origin+'/admin/addons/Recibo_Evolution/',ptext:'Recibos via WhatsApp'});
- if(typeof add_menu.financeiro==='function')add_menu.financeiro(item);else if(typeof add_menu.provedor==='function')add_menu.provedor(item);
+ var item=JSON.stringify({plink:window.location.origin+'/admin/addons/Recibo_Evolution/',ptext:'Recibos via WhatsApp',picone:'fa fa-whatsapp'});
+ if(typeof add_menu.financeiro==='function')add_menu.financeiro(item);
+ if(typeof add_menu.provedor==='function')add_menu.provedor(item);
 })();
 /* VPSCLOUD-RECIBO-END */
 """
@@ -79,7 +80,11 @@ def main():
     if os.environ.get('RECIBO_DB_CONFIG'):
         db = json.loads(Path(os.environ['RECIBO_DB_CONFIG']).read_text())
     elif (DATA / 'database.php').exists() and (TARGET / 'common.php').exists():
-        db = None  # Code-only update retains the dedicated account and schema.
+        try:
+            command(['php', '-r', "require $argv[1]; $d=recibo_db(); if(!$d->query('SELECT nome FROM vpscloud_recibo_whatsapp LIMIT 0'))exit(1);", str(TARGET / 'common.php')])
+            db = None  # Code-only update retains the dedicated account and schema.
+        except subprocess.CalledProcessError:
+            db = native_database((ROOT / 'admin/config.php').read_text(errors='replace'))
     elif (TARGET / 'index.php').exists():
         source = (TARGET / 'index.php').read_text(errors='replace')
         db = dict(zip(['host', 'user', 'password', 'name'], [literal(source, x) for x in ['host', 'usuario', 'senha', 'db']]))

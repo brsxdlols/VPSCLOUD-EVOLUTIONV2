@@ -43,6 +43,11 @@ try {
         rq($db,'GRANT SELECT,UPDATE,DELETE ON '.$dbName.'.brl_pago TO '.$account);
         rq($db,'GRANT SELECT,INSERT,UPDATE,DELETE ON '.$dbName.'.vpscloud_recibo_delivery TO '.$account);
     }
+    // Expose only WhatsApp gateway settings, never unrelated native passwords.
+    if(rq($db,"SHOW TABLES LIKE 'sis_opcao'")->num_rows){
+        rq($db,"CREATE OR REPLACE SQL SECURITY DEFINER VIEW vpscloud_recibo_whatsapp AS SELECT nome,valor FROM sis_opcao WHERE nome IN ('wapp_host','wapp_login','wapp_pass','wapp_servidor')");
+        foreach(array('localhost','127.0.0.1') as $host)rq($db,'GRANT SELECT ON '.$dbName.".vpscloud_recibo_whatsapp TO '".$runtimeUser."'@'".$host."'");
+    }
     $test=new mysqli($runtime['host'],$runtime['user'],$runtime['password'],$runtime['name']);if($test->connect_error)throw new Exception('Falha ao validar usuario dedicado; trigger preservada.');$test->close();
     $body="BEGIN
 IF NEW.status='pago' AND NOT(OLD.status <=> 'pago')

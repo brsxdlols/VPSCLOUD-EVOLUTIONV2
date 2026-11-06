@@ -1,4 +1,11 @@
 <?php
+// Use the same native MK-AUTH session bootstrap as the addon page.
+ob_start();
+$reciboBootComplete=false;
+register_shutdown_function(function()use(&$reciboBootComplete){if(!$reciboBootComplete){while(ob_get_level())ob_end_clean();http_response_code(401);header('Content-Type: application/json; charset=utf-8');echo json_encode(array('error'=>'Sessao expirada ou acesso negado. Entre novamente pelo MK-AUTH.'));}});
+include __DIR__.'/addons.class.php';
+$reciboBootComplete=true;
+ob_end_clean();
 require_once __DIR__.'/common.php';recibo_post();
 try {
     $action=isset($_POST['action'])?$_POST['action']:'';
@@ -12,11 +19,26 @@ try {
         if (preg_match('/[\r\n]/',$s['token'])) throw new Exception('Token invalido.');
         recibo_save($s);recibo_json(array('message'=>'Configuracao e template salvos.'));
     }
+    if ($action==='import_native') {
+        $db=recibo_db();$q=$db->query('SELECT nome,valor FROM vpscloud_recibo_whatsapp');
+        if(!$q){$db->close();throw new Exception('Importacao ainda nao instalada. Atualize o addon pelo instalador.');}
+        $items=array();while($r=$q->fetch_assoc())$items[$r['nome']]=$r['valor'];$db->close();
+        $connection=recibo_native_connection($items);$s=recibo_settings();
+        foreach($connection as $k=>$v)$s[$k]=$v;recibo_save($s);
+        recibo_json(array('message'=>'Conexao do WhatsApp do MK-AUTH importada e salva. Envio automatico nao foi alterado.','api_url'=>$s['api_url'],'instance'=>$s['instance']));
+    }
     if ($action==='preview') {
         $s=recibo_settings();$sample=array('cliente'=>'Cliente de exemplo','cpf_cnpj'=>'000.000.000-00','id_pagamento'=>'123','data_pagamento'=>date('d/m/Y'),'data_vencimento'=>date('d/m/Y'),'valor'=>'100,00','valor_pago'=>'100,00','coletor'=>'Atendimento','forma_pagamento'=>'PIX','provedor'=>$s['provider']);
         recibo_json(array('preview'=>recibo_render(substr($_POST['template'],0,10000),$sample)));
     }
     if ($action==='run') { session_write_close();$db=recibo_db();$out=recibo_run($db,true,1);$db->close();recibo_json($out); }
+    if ($action==='discard_pending') {
+        if (($_POST['confirm_discard'] ?? '')!=='DESCARTAR') throw new Exception('Confirme o descarte dos pendentes.');
+        session_write_close();$db=recibo_db();
+        try{$count=recibo_discard_pending($db);}finally{$db->close();}
+        recibo_log(0,'MANUAL_DISCARD_PENDING COUNT='.$count);
+        recibo_json(array('message'=>"Pendentes descartados sem envio: $count. Historico preservado.",'discarded'=>$count));
+    }
     if ($action==='clear_log') { file_put_contents(RECIBO_DATA.'/log_pagamentos.txt','',LOCK_EX);recibo_json(array('message'=>'Log limpo. A rotacao automatica continua ativa.')); }
     if ($action==='retry') {
         if (empty($_POST['confirm_retry'])) throw new Exception('Confirme a revisao do envio anterior.');
