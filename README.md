@@ -20,13 +20,15 @@ Para execução reproduzível, substitua o nome da branch pelo SHA do commit pub
 ## Comportamento
 
 - Sem V2 e sem volumes V2 conhecidos: prepara PostgreSQL, Redis e Manager; cria uma única API com o entrypoint original, incluindo migrações.
-- V2 com nomes e topologia esperados: preserva ENV, chave de API, bancos e sessão; aplica PATCH do Manager e instala auxiliares. O patch usa correspondência explícita de código e falha se o bundle não for reconhecido.
+- V2 com nomes e topologia esperados: preserva ENV, bancos e sessão; pergunta a chave e mantém a atual quando você pressiona Enter; aplica PATCH do Manager e instala auxiliares. O patch usa correspondência explícita de código e falha se o bundle não for reconhecido.
 - API parada, backend ausente, volumes órfãos, rede diferente ou nome de container não padrão: interrompe para recuperação supervisionada.
 - Imagem diferente: pode preparar dump e baixar a imagem, mas não substitui o container. O dump preparatório não é backup completo da autenticação.
 
 Nomes suportados: `evolution_v2_api`, `evolution_v2_postgres`, `evolution_v2_redis`. Diretório padrão: `/opt/vpscloud-evolution-v2`. A porta externa é 7070 (`EVOLUTION_PORT` em instalação nova). Para NAT use `EVOLUTION_SERVER_URL=http://ENDERECO_EXTERNO:PORTA`. O instalador não cria encaminhamento no roteador nem muda o MK-AUTH.
 
-Instalações novas recebem chave global aleatória, armazenada em `evolution-v2.env` protegido. Não é impressa no terminal. Instalações existentes preservam a chave; nenhuma rotação silenciosa é feita.
+O instalador pergunta a API Key Global com texto visível ao digitar. Em instalação nova, Enter gera uma chave aleatória; em instalação existente, Enter mantém a chave atual. A seleção é mostrada no terminal interativo e armazenada no ENV protegido. Use de 6 a 128 letras, números, ponto, hífen ou sublinhado. Para automação sem terminal, `EVOLUTION_API_KEY` define a escolha; sem essa variável, a chave existente é mantida ou uma nova é gerada.
+
+Quando você escolhe outra chave para uma V2 existente, somente a API é recriada com a mesma imagem, rede, portas e mounts. O estado anterior é preservado em backup e retomado se a verificação de saúde/autenticação falhar. O monitor usa a chave efetiva do container. O token do addon local é atualizado apenas quando coincide com a antiga chave global e aponta para a mesma API. Tokens de instância ou integrações externas não são substituídos: se usavam a chave global antiga, atualize-os após a troca.
 
 ## Manager e manutenção
 
@@ -112,3 +114,5 @@ O instalador identifica o container padrão `evolution_api` com imagem V1 reconh
 Pastas reconhecidas: `/opt/evolution`, `/opt/evolution-api`, `/opt/vpscloud-evolution`, somente quando identificadas pelos mounts ou pelo projeto Compose da V1. Pastas de outros serviços, mounts compartilhados e volumes V2 não são excluídos. Nomes/imagens desconhecidos ou recursos compartilhados bloqueiam a remoção para não atingir outra aplicação. Em caso de falha de backup, a V1 que estava ligada é reiniciada. Depois da exclusão, falhas na instalação V2 exigem recuperação a partir do backup; não há rollback automático de dados.
 
 A V2 usa bancos novos; configure o MK-AUTH para a nova URL/instância/chave e conecte o WhatsApp por novo QR. Esta operação descarta o uso das sessões antigas e não transfere automaticamente dados ou histórico da V1. O helper `evolution-retire-v1.py --plan` oferece inventário sem parar/excluir a V1. O instalador em `EVOLUTION_MODE=diagnose` continua somente leitura.
+
+Instalações novas do addon começam desativadas. Há um único switch destacado no topo para os envios; ele substitui a antiga combinação de controle principal e checkbox de automático. Em atualizações, o estado efetivo anterior é preservado (qualquer bloqueio anterior continua desligado). O teste fictício e a consulta retroativa permanecem.

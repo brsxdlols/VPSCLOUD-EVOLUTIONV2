@@ -103,6 +103,8 @@ install_mkauth_recibo_log_rotation() { :; } # Covered by the unified policy.
 install_integrations() {
   if [ "${EVOLUTION_INSTALL_MONITOR:-1}" = 1 ]; then
     /usr/local/sbin/evolution-install-monitor
+  else
+    /usr/local/sbin/evolution-install-monitor --key-only
   fi
   if [ -d /opt/mk-auth/admin ] && [ "${EVOLUTION_INSTALL_RECIBO:-1}" = 1 ]; then
     /usr/local/sbin/evolution-install-recibo
@@ -153,13 +155,34 @@ printf '%s  %s\n' '690c4d31234050b68ba737d79e3d4d358907fdc589fcc8cf66d2a6ffd6d44
   fi
 }
 
+choose_api_key() {
+  CURRENT_API_KEY="${1:-}"
+  API_KEY="${EVOLUTION_API_KEY:-}"
+  if [ -z "$API_KEY" ] && [ -t 0 ]; then
+    if [ -n "$CURRENT_API_KEY" ]; then
+      printf 'API Key Global (texto visivel; Enter mantem a atual): '
+    else
+      printf 'Defina a API Key Global (texto visivel; Enter gera uma chave): '
+    fi
+    IFS= read -r API_KEY || { echo 'ERRO: leitura da chave cancelada.'; exit 1; }
+  fi
+  if [ -z "$API_KEY" ]; then API_KEY="$CURRENT_API_KEY"; fi
+  if [ -z "$API_KEY" ]; then API_KEY="$(openssl rand -hex 32)"; fi
+  case "$API_KEY" in *[!A-Za-z0-9._-]*) echo 'ERRO: use letras, numeros, ponto, hifen ou sublinhado na chave.'; exit 1 ;; esac
+  [ "${#API_KEY}" -ge 6 ] && [ "${#API_KEY}" -le 128 ] || { echo 'ERRO: a chave precisa ter de 6 a 128 caracteres.'; exit 1; }
+  export EVOLUTION_API_KEY="$API_KEY"
+  if [ -t 0 ]; then printf 'API Key Global selecionada: %s\n' "$API_KEY"; fi
+}
 create_env() {
   if [ -s "$ENV_FILE" ]; then
-    chmod 600 "$ENV_FILE"
+    choose_api_key "$(env_value AUTHENTICATION_API_KEY)"
+    sed "s/^AUTHENTICATION_API_KEY=.*/AUTHENTICATION_API_KEY=$API_KEY/" "$ENV_FILE" > "$ENV_FILE.tmp"
+    grep -q '^AUTHENTICATION_API_KEY=' "$ENV_FILE.tmp" || printf 'AUTHENTICATION_API_KEY=%s\n' "$API_KEY" >> "$ENV_FILE.tmp"
+    chmod 600 "$ENV_FILE.tmp"; mv -f "$ENV_FILE.tmp" "$ENV_FILE"
     return
   fi
 
-  API_KEY="$(openssl rand -hex 32)"
+  choose_api_key ""
   DB_PASSWORD="$(openssl rand -hex 24)"
   REDIS_PASSWORD="$(openssl rand -hex 24)"
   HOST_ADDRESS="$(
@@ -377,6 +400,7 @@ patch_existing_v2() {
   for dependency in "$PG_CONTAINER" "$REDIS_CONTAINER"; do
     [ "$(docker inspect --format '{{.State.Running}}' "$dependency")" = true ] || { echo "ERRO: dependencia parada ou ausente."; exit 1; }
   done
+  choose_api_key "$(env_value AUTHENTICATION_API_KEY)"
   docker update --restart=always "$API_CONTAINER" "$PG_CONTAINER" "$REDIS_CONTAINER" >/dev/null
   [ -d "$MANAGER_DIR" ] || { echo "ERRO: Manager nao encontrado em $MANAGER_DIR."; exit 1; }
   JS="$(find "$MANAGER_DIR/assets" -maxdepth 1 -type f -name 'index-*.js' | head -n 1)"

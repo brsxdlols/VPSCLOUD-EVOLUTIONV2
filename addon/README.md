@@ -18,10 +18,12 @@ O botão **Descartar recibos pendentes sem enviar** marca somente `envio=0` como
 
 O botão **Usar servidor WhatsApp do MK-AUTH** importa e salva a conexão atual de Opções → WhatsApp → Servidor (Evolution2 API), preservando template e agendamento. A leitura usa uma view restrita às quatro opções do gateway; não concede acesso às demais senhas de `sis_opcao`. O token não é devolvido ao navegador. O acesso dos botões usa o mesmo bootstrap de sessão nativa da página.
 
-Simulações de próximo recibo e descarte só leem a fila e não chamam a Evolution API. O descarte oferece todos os pendentes ou apenas anteriores a hoje, considerando `datapag` e `CURDATE()` do banco; datas ausentes são tratadas como antigas. A simulação é uma fotografia: o automático continua ativo se estiver habilitado. Para testes com fila parada, desative e salve o agendamento primeiro.
+O descarte oferece todos os pendentes ou apenas anteriores a hoje, considerando `datapag` e `CURDATE()` do banco; datas ausentes são tratadas como antigas. Os botões de simulação foram removidos da interface.
 
 O teste real usa conexão/template salvos, dados fictícios e exclusivamente o número informado e confirmado, sem consumir a fila. Exige CSRF, instância conectada e espera de 60 segundos entre testes na mesma sessão. Resultado incerto não é reenviado automaticamente. O teste de regressão HTTP usa uma API falsa em loopback; não envia mensagens WhatsApp.
 
-O controle principal de envios fica no topo: desligado bloqueia comprovantes automáticos, manuais e retroativos, preservando configurações. Um envio já iniciado pode concluir. Testes fictícios e simulações continuam disponíveis. Ele é independente do agendamento automático.
+O controle principal de envios fica no topo: desligado bloqueia comprovantes automáticos, manuais e retroativos, preservando configurações. Um envio já iniciado pode concluir. O teste fictício continua disponível. Esse é o único controle de ativação dos comprovantes automáticos e manuais.
 
 A retomada normal aceita somente pagamentos do dia atual no banco. Ao voltar a uma instância conectada, pendentes anteriores/sem data são marcados como descartados sem envio, e apenas um recibo do dia é processado por execução, respeitando o intervalo automático configurado. A consulta retroativa é manual, de 1 a 3 dias anteriores, limitada a 100 opções e a um registro por confirmação. Ela inclui somente pendentes/descartados, excluindo já aceitos, falhas e revisões. Não existe envio retroativo em lote. O operador deve verificar recebimentos por outros canais antes de confirmar.
+
+Interface simplificada: um único switch destacado controla os envios e o agendamento; instalação nova desativada e estado efetivo anterior preservado. O checkbox duplicado e os botões de simulação foram removidos. Os endpoints de simulação continuam disponíveis para compatibilidade com páginas antigas em cache, sempre somente leitura.

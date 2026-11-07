@@ -10,7 +10,7 @@ require_once __DIR__.'/common.php';recibo_post();
 try {
     $action=isset($_POST['action'])?$_POST['action']:'';
     if ($action==='set_receipts_enabled') {
-        $s=recibo_settings();$s['receipts_enabled']=($_POST['enabled'] ?? '')==='1';recibo_save($s);
+        $s=recibo_settings();$s['receipts_enabled']=($_POST['enabled'] ?? '')==='1';$s['enabled']=$s['receipts_enabled'];recibo_save($s);
         recibo_json(array('message'=>$s['receipts_enabled']?'Envios de comprovantes ativados. O agendamento configurado sera respeitado.':'Envios de comprovantes desativados. Configuracoes preservadas. Um envio que ja estava em andamento pode concluir.','enabled'=>$s['receipts_enabled']));
     }
     if ($action==='save') {
@@ -18,7 +18,7 @@ try {
         if (!$u || !isset($u['scheme'],$u['host']) || !in_array($u['scheme'],array('http','https'),true) || isset($u['user']) || isset($u['pass']) || preg_match('/[\r\n]/',$url)) throw new Exception('URL da API invalida.');
         $instance=trim($_POST['instance']);if (!$instance || strlen($instance)>100) throw new Exception('Nome da instancia invalido.');
         $template=trim($_POST['template']);if (!$template || strlen($template)>10000) throw new Exception('Template obrigatorio, com ate 10000 bytes.');
-        $s['api_url']=rtrim($url,'/');$s['instance']=$instance;$s['provider']=trim($_POST['provider']);$s['enabled']=!empty($_POST['enabled']);$s['interval']=max(1,min(60,(int)$_POST['interval']));$s['template']=$template;
+        $s['api_url']=rtrim($url,'/');$s['instance']=$instance;$s['provider']=trim($_POST['provider']);$s['enabled']=$s['receipts_enabled'];$s['interval']=max(1,min(60,(int)$_POST['interval']));$s['template']=$template;
         if (trim($_POST['token'])!=='') $s['token']=trim($_POST['token']);
         if (preg_match('/[\r\n]/',$s['token'])) throw new Exception('Token invalido.');
         recibo_save($s);recibo_json(array('message'=>'Configuracao e template salvos.'));

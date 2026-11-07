@@ -57,6 +57,13 @@ class ReceiptHTTPTest(unittest.TestCase):
                 self.assertEqual(len(calls), 2); self.assertEqual(calls[1][2]['number'], '5511999990000')
                 self.assertIn('TESTE', calls[1][2]['text']); self.assertIn('Cliente de exemplo', calls[1][2]['text'])
                 self.assertFalse((data / 'database.php').exists())
+                status, result = request('action=set_receipts_enabled&csrf=unit-csrf&enabled=1')
+                self.assertEqual(status,200)
+                saved=json.loads((data/'settings.json').read_text());self.assertTrue(saved['enabled']);self.assertTrue(saved['receipts_enabled']);self.assertEqual(saved['token'],'mock-token')
+                status, result = request('action=set_receipts_enabled&csrf=unit-csrf&enabled=0')
+                self.assertEqual(status,200)
+                saved=json.loads((data/'settings.json').read_text());self.assertFalse(saved['enabled']);self.assertFalse(saved['receipts_enabled']);self.assertEqual(saved['instance'],'TEST_ONLY')
+
                 status, result = request('action=send_test&csrf=unit-csrf&confirm_test=ENVIAR_TESTE&test_phone=11999990000')
                 self.assertEqual(status, 400); self.assertEqual(len(calls), 2)
                 status, result = request('action=send_test&csrf=invalid&confirm_test=ENVIAR_TESTE&test_phone=11999990000')

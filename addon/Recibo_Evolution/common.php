@@ -16,7 +16,7 @@ function recibo_post() {
 }
 function recibo_json($value, $status = 200) { http_response_code($status); header('Content-Type: application/json; charset=utf-8'); echo json_encode($value, JSON_UNESCAPED_UNICODE); exit; }
 function recibo_defaults() {
-    return array('api_url'=>'http://127.0.0.1:7070','instance'=>'MKAUTH','token'=>'','provider'=>'Seu provedor','receipts_enabled'=>true,'enabled'=>false,'interval'=>5,'retention_days'=>0,
+    return array('api_url'=>'http://127.0.0.1:7070','instance'=>'MKAUTH','token'=>'','provider'=>'Seu provedor','receipts_enabled'=>false,'enabled'=>false,'interval'=>5,'retention_days'=>0,
         'template'=>"💵 *CONFIRMAÇÃO DE PAGAMENTO*\n\n👤 *Cliente*: {cliente}\n📄 *ID do pagamento*: {id_pagamento}\n📑 *CPF/CNPJ*: {cpf_cnpj}\n✅ *Pagamento recebido em*: {data_pagamento}\n📅 *Vencimento*: {data_vencimento}\n💰 *Valor da fatura*: R$ {valor}\n💸 *Valor pago*: R$ {valor_pago}\n👤 *Recebido por*: {coletor}\n💳 *Forma de pagamento*: {forma_pagamento}\n\n*Atenciosamente, {provedor}* 🤝\n_Mensagem gerada automaticamente pelo sistema._");
 }
 function recibo_native_connection($items) {
@@ -28,7 +28,11 @@ function recibo_native_connection($items) {
 }
 function recibo_settings() {
     $p=RECIBO_DATA.'/settings.json'; $s=is_file($p)?json_decode(file_get_contents($p),true):array();
-    return array_merge(recibo_defaults(), is_array($s)?$s:array());
+    $stored=is_array($s)?$s:array();$out=array_merge(recibo_defaults(),$stored);
+    // Preserve the effective old automatic state while consolidating both controls.
+    $on=array_key_exists('receipts_enabled',$stored)?(bool)$stored['receipts_enabled']:(bool)($stored['enabled'] ?? false);
+    if(array_key_exists('enabled',$stored))$on=$on && (bool)$stored['enabled'];
+    $out['receipts_enabled']=$on;$out['enabled']=$on;return $out;
 }
 function recibo_save($settings) {
     $p=RECIBO_DATA.'/settings.json'; $tmp=$p.'.'.bin2hex(random_bytes(6)).'.tmp';

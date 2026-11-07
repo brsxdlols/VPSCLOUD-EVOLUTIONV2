@@ -2,22 +2,26 @@
 """Install boot/watchdog integration for the standard layout; retain old API."""
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import time
+import urllib.parse
 
 PROJECT = Path('/opt/vpscloud-evolution-v2')
 API = 'evolution_v2_api'
 MONITOR = PROJECT / 'monitor'
+RECEIPT = Path('/opt/mk-auth/dados/Recibo_Evolution/settings.json')
+MAINTENANCE = Path('/run/vpscloud-evolution-maintenance')
 
 
 def command(args):
     return subprocess.check_output(args, stderr=subprocess.DEVNULL, universal_newlines=True).strip()
 
 
-def recreate_args(info, env_file):
+def recreate_args(info, env_file, with_monitor=True):
     host = info['HostConfig']
     if host.get('NetworkMode') != 'evolution_v2_net':
         raise ValueError('Rede nao padrao: adaptacao manual necessaria')
@@ -43,7 +47,7 @@ def recreate_args(info, env_file):
                 ip = '[' + ip + ']'
             args += ['-p', ip + ':' + binding['HostPort'] + ':' + port]
     for mount in info.get('Mounts', []):
-        if mount['Destination'] == '/evolution/ops-monitor':
+        if with_monitor and mount['Destination'] == '/evolution/ops-monitor':
             continue
         if mount['Type'] == 'bind':
             source = mount['Source']
@@ -52,42 +56,48 @@ def recreate_args(info, env_file):
         else:
             raise ValueError('Mount nao suportado')
         args += ['-v', source + ':' + mount['Destination'] + (':ro' if not mount['RW'] else ':rw')]
-    args += ['-v', str(MONITOR) + ':/evolution/ops-monitor:rw']
+    if with_monitor: args += ['-v', str(MONITOR) + ':/evolution/ops-monitor:rw']
     for key, value in (conf.get('Labels') or {}).items():
         args += ['--label', key + '=' + value]
     args.append(info['Image'])
     return args
 
 
-def main():
-    if os.geteuid() != 0:
-        raise ValueError('Execute como root')
-    os.umask(0o077)
-    for name in ['monitor-hook.cjs', 'monitor.html', 'evolution-watchdog.py']:
-        if not (MONITOR / name).is_file():
-            raise ValueError('Arquivo do monitor ausente: ' + name)
-    info = json.loads(command(['docker', 'inspect', API]))[0]
-    if not info['State']['Running']:
-        raise ValueError('API precisa estar ativa antes da instalacao do painel')
-    stamp = time.strftime('%Y%m%d-%H%M%S')
-    backup = PROJECT / 'backups' / ('monitor-' + stamp)
-    backup.mkdir(parents=True, mode=0o700)
-    (backup / 'api-inspect.json').write_text(json.dumps(info))
-    config_file = MONITOR / 'config.json'
-    if not config_file.exists():
-        config_file.write_text(json.dumps({'label': 'MK-AUTH / Evolution', 'instances': [{'name': 'MKAUTH', 'enabled': True}]}))
-    os.chmod(str(config_file), 0o600)
-    env = list(info['Config']['Env'])
-    existing = next((x.split('=', 1)[1] for x in env if x.startswith('NODE_OPTIONS=')), '')
-    if '--require=/evolution/ops-monitor/monitor-hook.cjs' not in existing:
-        existing = (existing + ' --require=/evolution/ops-monitor/monitor-hook.cjs').strip()
-    env = [x for x in env if not x.startswith('NODE_OPTIONS=')]
-    env.append('NODE_OPTIONS=' + existing)
-    if any('\n' in value or '\r' in value for value in env):
-        raise ValueError('ENV multiline exige adaptacao manual')
-    env_file = backup / 'effective.env'
-    env_file.write_text('\n'.join(env) + '\n')
-    args = recreate_args(info, env_file)
+def key_env(env, requested):
+    old = next((x.split('=',1)[1] for x in env if x.startswith('AUTHENTICATION_API_KEY=')), '')
+    new = requested or old
+    if requested and not re.fullmatch(r'[A-Za-z0-9._-]{6,128}',requested):
+        raise ValueError('API Key Global invalida; use de 6 a 128 letras, numeros, ponto, hifen ou sublinhado.')
+    result = [x for x in env if not x.startswith('AUTHENTICATION_API_KEY=')]
+    result.append('AUTHENTICATION_API_KEY='+new)
+    return result, old, new
+
+
+def key_updates(old, new):
+    updates = {}
+    path = PROJECT / 'evolution-v2.env'
+    if not path.is_file(): raise ValueError('ENV principal ausente; chave preservada.')
+    text = path.read_text()
+    lines = [x for x in text.splitlines() if not x.startswith('AUTHENTICATION_API_KEY=')]
+    updates[path] = '\n'.join(lines+['AUTHENTICATION_API_KEY='+new])+'\n'
+    receipt = RECEIPT
+    if receipt.is_file():
+        saved = json.loads(receipt.read_text())
+        current_url = next((x.split('=',1)[1] for x in text.splitlines() if x.startswith('SERVER_URL=')), 'http://127.0.0.1:7070')
+        origin = urllib.parse.urlsplit(current_url); target = urllib.parse.urlsplit(saved.get('api_url',''))
+        local = target.hostname in ('127.0.0.1','localhost',origin.hostname) and (target.port or 80)==(origin.port or 80)
+        if saved.get('token') == old and local:
+            saved['token'] = new; updates[receipt] = json.dumps(saved,ensure_ascii=False,indent=2)
+    return updates
+
+
+def write_preserving(path, content):
+    stat = path.stat(); temp = path.with_name(path.name+'.key-tmp')
+    temp.write_text(content); os.chown(str(temp),stat.st_uid,stat.st_gid);os.chmod(str(temp),stat.st_mode & 0o777)
+    os.replace(str(temp),str(path))
+
+
+def configure_docker_boot():
     # Enable the init system actually used on the host; never restart Docker here.
     if Path('/run/systemd/system').is_dir():
         command(['systemctl', 'enable', 'docker'])
@@ -96,9 +106,50 @@ def main():
     else:
         raise ValueError('Sistema de inicializacao nao suportado')
     command(['docker', 'update', '--restart=always'] + ['evolution_v2_postgres', 'evolution_v2_redis', API])
+
+
+def main():
+    if os.geteuid() != 0:
+        raise ValueError('Execute como root')
+    os.umask(0o077)
+    key_only = '--key-only' in sys.argv
+    for name in ([] if key_only else ['monitor-hook.cjs', 'monitor.html', 'evolution-watchdog.py']):
+        if not (MONITOR / name).is_file():
+            raise ValueError('Arquivo do monitor ausente: ' + name)
+    info = json.loads(command(['docker', 'inspect', API]))[0]
+    if not info['State']['Running']:
+        raise ValueError('API precisa estar ativa antes da instalacao do painel')
+    selected_env, old_key, new_key = key_env(list(info['Config']['Env']),os.environ.get('EVOLUTION_API_KEY',''))
+    key_changed = old_key != new_key
+    if key_only and not key_changed:
+        print('API Key Global mantida.');return 0
+    updates = key_updates(old_key,new_key) if key_changed else {}
+    originals = {p:p.read_text() for p in updates}
+    stamp = time.strftime('%Y%m%d-%H%M%S')+'-'+str(os.getpid())
+    backup = PROJECT / 'backups' / ('monitor-' + stamp)
+    backup.mkdir(parents=True, mode=0o700)
+    (backup / 'api-inspect.json').write_text(json.dumps(info))
+    config_file = MONITOR / 'config.json'
+    if not key_only and not config_file.exists():
+        config_file.write_text(json.dumps({'label': 'MK-AUTH / Evolution', 'instances': [{'name': 'MKAUTH', 'enabled': True}]}))
+    if config_file.exists(): os.chmod(str(config_file), 0o600)
+    env = selected_env
+    existing = next((x.split('=', 1)[1] for x in env if x.startswith('NODE_OPTIONS=')), '')
+    if not key_only and '--require=/evolution/ops-monitor/monitor-hook.cjs' not in existing:
+        existing = (existing + ' --require=/evolution/ops-monitor/monitor-hook.cjs').strip()
+    env = [x for x in env if not x.startswith('NODE_OPTIONS=')]
+    env.append('NODE_OPTIONS=' + existing)
+    if any('\n' in value or '\r' in value for value in env):
+        raise ValueError('ENV multiline exige adaptacao manual')
+    env_file = backup / 'effective.env'
+    env_file.write_text('\n'.join(env) + '\n')
+    args = recreate_args(info, env_file, with_monitor=not key_only)
+    for index,(path,content) in enumerate(originals.items()):
+        (backup/('key-config-before-'+str(index))).write_text(content)
+    configure_docker_boot()
     loaded = '/evolution/ops-monitor' in [x['Destination'] for x in info['Mounts']] and '--require=/evolution/ops-monitor/monitor-hook.cjs' in ' '.join(info['Config']['Env'])
-    if not loaded:
-        marker = Path('/run/vpscloud-evolution-maintenance')
+    if (not loaded and not key_only) or key_changed:
+        marker = MAINTENANCE
         already_paused = marker.exists()
         marker.touch()
         previous = API + '_before_monitor_' + stamp.replace('-', '_')
@@ -109,7 +160,8 @@ def main():
             command(['docker', 'rename', API, previous])
             renamed = True
             command(args)
-            probe = "(async()=>{for(const p of ['/', '/monitor/']){let r=await fetch('http://127.0.0.1:8080'+p,{signal:AbortSignal.timeout(3000)});if(r.status!==200)process.exit(1)}})().catch(()=>process.exit(1))"
+            paths = ['/'] if key_only else ['/', '/monitor/']
+            probe = "(async()=>{for(const p of "+json.dumps(paths)+"){let r=await fetch('http://127.0.0.1:8080'+p,{signal:AbortSignal.timeout(3000)});if(r.status!==200)process.exit(1)}let a=await fetch('http://127.0.0.1:8080/instance/fetchInstances',{headers:{apikey:process.env.AUTHENTICATION_API_KEY},signal:AbortSignal.timeout(3000)});if(a.status!==200)process.exit(1)})().catch(()=>process.exit(1))"
             ready = False
             for attempt in range(40):
                 result = subprocess.run(['docker', 'exec', API, 'node', '-e', probe], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
@@ -119,7 +171,11 @@ def main():
                 time.sleep(3)
             if not ready:
                 raise ValueError('API ou painel nao iniciou; retomando container anterior')
+            for path,content in updates.items(): write_preserving(path,content)
         except Exception:
+            for path,content in originals.items():
+                try: write_preserving(path,content)
+                except Exception: print('ATENCAO: configuracao exige restauracao do backup privado.',file=sys.stderr)
             if renamed:
                 if subprocess.run(['docker', 'inspect', API], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
                     subprocess.run(['docker', 'stop', '-t', '15', API], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -133,6 +189,8 @@ def main():
             if not already_paused:
                 if marker.exists():
                     marker.unlink()
+    if key_only:
+        print('API Key Global atualizada; bancos e sessoes preservados. Backup: '+str(backup));return 0
     cron = Path('/etc/cron.d/vpscloud-evolution-watchdog')
     if cron.exists():
         shutil.copy2(str(cron), str(backup / 'watchdog.cron'))

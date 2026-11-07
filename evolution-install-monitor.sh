@@ -43,4 +43,4 @@ rmdir "$STAGE/assets"
 rmdir "$STAGE"
 trap - EXIT
 sh "$MONITOR/evolution-log-policy.sh"
-exec python3 "$MONITOR/evolution-enable-monitor.py"
+exec python3 "$MONITOR/evolution-enable-monitor.py" "$@"
