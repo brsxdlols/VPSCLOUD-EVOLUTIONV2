@@ -16,7 +16,7 @@ case "$1 $2" in
   case "$SCENARIO:$3" in
    v1:evolution_api|api-stopped:evolution_v2_api|missing-env:evolution_v2_api|wrong-network:evolution_v2_api|partial:evolution_v2_postgres) exit 0;;
   esac; exit 1;;
- 'volume inspect') [ "$SCENARIO" = orphan-volume ]; exit $?;;
+ 'volume inspect') [ "$SCENARIO" = orphan-volume ] || [ "$SCENARIO" = v1 ]; exit $?;;
  'ps -a') [ "$SCENARIO" != nonstandard ] || echo custom/evolution-api:v1; exit 0;;
  'volume ls') exit 0;;
 esac
@@ -32,10 +32,10 @@ echo UNEXPECTED_MUTATION >&2; exit 97
 test('POSIX syntax for every shell script',()=>{
  for(const f of fs.readdirSync(root).filter(f=>f.endsWith('.sh'))){const r=cp.spawnSync('sh',['-n',path.join(root,f)],{encoding:'utf8'});assert.equal(r.status,0,r.stderr)}
 });
-for(const [scenario,message] of [['diagnose',''],['v1','V1 encontrada'],['orphan-volume','volume preexistente'],['nonstandard','nomes diferentes'],['api-stopped','API parada'],['missing-env','ENV ausente'],['wrong-network','topologia nao padrao'],['partial','Estado parcial']]){
+for(const [scenario,message] of [['diagnose',''],['v1','volume preexistente'],['orphan-volume','volume preexistente'],['nonstandard','nomes diferentes'],['api-stopped','API parada'],['missing-env','ENV ausente'],['wrong-network','topologia nao padrao'],['partial','Estado parcial']]){
  test('preflight '+scenario,()=>{
   const dir=path.join(tmp,scenario);fs.mkdirSync(dir);const bin=path.join(dir,'bin');fs.mkdirSync(bin);fs.writeFileSync(path.join(bin,'id'),'#!/bin/sh\nprintf 0\n',{mode:0o755});fs.writeFileSync(path.join(bin,'docker'),mock,{mode:0o755});
-  for(const dep of ['curl','openssl'])fs.writeFileSync(path.join(bin,dep),'#!/bin/sh\necho UNEXPECTED_MUTATION >&2\nexit 97\n',{mode:0o755});
+  for(const dep of ['curl','openssl','python3'])fs.writeFileSync(path.join(bin,dep),'#!/bin/sh\necho UNEXPECTED_MUTATION >&2\nexit 97\n',{mode:0o755});
   const project=path.join(dir,'project');
   if(['api-stopped','wrong-network'].includes(scenario)){fs.mkdirSync(project);fs.writeFileSync(path.join(project,'evolution-v2.env'),'TEST=1\n')}
   const script=source.replaceAll('/opt/vpscloud-evolution-v2',project).replaceAll('/root/evolution-v1-backups',path.join(dir,'legacy')).replaceAll('/run/lock/vpscloud-evolution-install.lock',path.join(dir,'lock'));
