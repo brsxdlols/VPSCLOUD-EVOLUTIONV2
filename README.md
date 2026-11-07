@@ -2,7 +2,7 @@
 
 O instalador oficial é `install-7070-replace-v1.sh`, com monitor no host, alertas Telegram e addon de recibos. Use o comando abaixo. O atalho antigo `patch-update-v237.sh` foi desativado; `install.sh` legado não faz parte deste fluxo.
 
-**Estado:** revisão para instalação controlada e PATCH. Atualização automática de uma imagem diferente permanece bloqueada. Migração V1 → V2 não é automática. Os testes de proteção não substituem homologação completa de instalação, atualização e rollback.
+**Estado:** revisão para instalação controlada e PATCH. Atualização automática de uma imagem diferente permanece bloqueada. Uma V1 reconhecida é removida automaticamente, com backup privado, antes de uma V2 nova. Não é migração de sessões ou histórico; será necessário novo QR. Os testes de proteção não substituem homologação completa de instalação, atualização e rollback.
 
 ## Download e execução
 
@@ -19,9 +19,9 @@ Para execução reproduzível, substitua o nome da branch pelo SHA do commit pub
 
 ## Comportamento
 
-- Sem V2, sem V1 e sem volumes conhecidos: prepara PostgreSQL, Redis e Manager; cria uma única API com o entrypoint original, incluindo migrações.
+- Sem V2 e sem volumes V2 conhecidos: prepara PostgreSQL, Redis e Manager; cria uma única API com o entrypoint original, incluindo migrações.
 - V2 com nomes e topologia esperados: preserva ENV, chave de API, bancos e sessão; aplica PATCH do Manager e instala auxiliares. O patch usa correspondência explícita de código e falha se o bundle não for reconhecido.
-- API parada, backend ausente, volumes órfãos, rede diferente, V1 ou nome de container não padrão: interrompe para recuperação supervisionada.
+- API parada, backend ausente, volumes órfãos, rede diferente ou nome de container não padrão: interrompe para recuperação supervisionada.
 - Imagem diferente: pode preparar dump e baixar a imagem, mas não substitui o container. O dump preparatório não é backup completo da autenticação.
 
 Nomes suportados: `evolution_v2_api`, `evolution_v2_postgres`, `evolution_v2_redis`. Diretório padrão: `/opt/vpscloud-evolution-v2`. A porta externa é 7070 (`EVOLUTION_PORT` em instalação nova). Para NAT use `EVOLUTION_SERVER_URL=http://ENDERECO_EXTERNO:PORTA`. O instalador não cria encaminhamento no roteador nem muda o MK-AUTH.
@@ -103,3 +103,12 @@ Logs próprios do monitor/limpeza/recibos usam até sete rotações, `maxage 7`,
 O atalho **Recibos via WhatsApp** fica nos menus **Financeiro** e **Provedor**. No addon, **Usar servidor WhatsApp do MK-AUTH** importa a conexão nativa sem exibir o token; **Descartar recibos pendentes sem enviar** esvazia a fila pendente atual mantendo o histórico e os pagamentos. O descarte não altera registros já enviados, em revisão ou com falha.
 
 O controle principal de comprovantes fica no topo do addon e bloqueia envios automáticos/manuais/retroativos sem apagar configuração. A retomada normal processa só pagamentos de hoje, um por execução; anteriores ficam descartados sem envio. Exceção de fim de semana: consultar 1–3 dias anteriores e confirmar um registro individual, nunca um lote.
+
+
+## Substituição automática da V1
+
+O instalador identifica o container padrão `evolution_api` com imagem V1 reconhecida (`atendai`, `evolutionapi` ou `evoapicloud/evolution-api:v1.x`). Tags `latest` dessas imagens só são aceitas após ler o package.json do container e comprovar versão 1.x. Baixa as imagens V2 antes de parar a V1. Salva inspect, imagem, filesystem e mounts, valida os arquivos e checksums e só então remove o container, volumes exclusivos, diretórios V1 identificados, redes exclusivas sem uso e imagem não compartilhada. Backups ficam em `/root/evolution-v1-backups/before-v2-*`, restritos a root. Não são apagados.
+
+Pastas reconhecidas: `/opt/evolution`, `/opt/evolution-api`, `/opt/vpscloud-evolution`, somente quando identificadas pelos mounts ou pelo projeto Compose da V1. Pastas de outros serviços, mounts compartilhados e volumes V2 não são excluídos. Nomes/imagens desconhecidos ou recursos compartilhados bloqueiam a remoção para não atingir outra aplicação. Em caso de falha de backup, a V1 que estava ligada é reiniciada. Depois da exclusão, falhas na instalação V2 exigem recuperação a partir do backup; não há rollback automático de dados.
+
+A V2 usa bancos novos; configure o MK-AUTH para a nova URL/instância/chave e conecte o WhatsApp por novo QR. Esta operação descarta o uso das sessões antigas e não transfere automaticamente dados ou histórico da V1. O helper `evolution-retire-v1.py --plan` oferece inventário sem parar/excluir a V1. O instalador em `EVOLUTION_MODE=diagnose` continua somente leitura.

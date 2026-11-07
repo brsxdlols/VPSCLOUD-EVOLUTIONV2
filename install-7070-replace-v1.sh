@@ -34,17 +34,15 @@ if [ "${EVOLUTION_MODE:-apply}" = diagnose ]; then
   docker volume ls --format '{{.Name}}'
   exit 0
 fi
-for dep in curl openssl sed awk grep find od sha256sum mktemp; do
+for dep in curl openssl sed awk grep find od sha256sum mktemp python3; do
   command -v "$dep" >/dev/null 2>&1 || { echo "ERRO: dependencia ausente: $dep"; exit 1; }
 done
 [ "$(id -u)" = 0 ] || { echo "ERRO: execute como root."; exit 1; }
 case "$API_PORT" in ''|*[!0-9]*) echo "ERRO: porta invalida."; exit 1 ;; esac
 [ "$API_PORT" -ge 1 ] && [ "$API_PORT" -le 65535 ] || exit 1
+LEGACY_V1=0
+if docker container inspect evolution_api >/dev/null 2>&1; then LEGACY_V1=1; fi
 if ! docker container inspect "$API_CONTAINER" >/dev/null 2>&1; then
-  if docker container inspect evolution_api >/dev/null 2>&1; then
-    echo "ERRO: V1 encontrada. Migracao automatica nao comprovada; V1 preservada."
-    exit 1
-  fi
   for volume in "$PG_VOLUME" "$REDIS_VOLUME"; do
     if docker volume inspect "$volume" >/dev/null 2>&1; then
       echo "ERRO: volume preexistente sem API. Recuperacao supervisionada necessaria: $volume"
@@ -52,7 +50,7 @@ if ! docker container inspect "$API_CONTAINER" >/dev/null 2>&1; then
     fi
   done
   # Detect nonstandard names without assuming that unknown data can be reused.
-  if docker ps -a --format '{{.Image}}' | grep -qi evolution; then
+  if [ "$LEGACY_V1" = 0 ] && docker ps -a --format '{{.Image}}' | grep -qi evolution; then
     echo "ERRO: Evolution com nomes diferentes. Inventarie a instalacao antes de continuar."
     exit 1
   fi
@@ -66,6 +64,15 @@ trap 'exit 143' TERM
 mkdir -p "$PROJECT_DIR" "$BACKUP_ROOT"
 chmod 700 "$PROJECT_DIR" "$BACKUP_ROOT"
 
+retire_legacy_v1() {
+  [ "$LEGACY_V1" = 1 ] || return 0
+  V1_HELPER=$(mktemp "$PROJECT_DIR/.retire-v1.XXXXXX")
+  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/195892e8f8474ef1f00bfc15bb613428dcf4ca94/evolution-retire-v1.py" -o "$V1_HELPER"
+  printf '%s  %s\n' 'b69a87a4c1e56ccb08942949b43260eb5896277b9ca04f539f7e267d1b512b82' "$V1_HELPER" | sha256sum -c - >/dev/null
+  python3 "$V1_HELPER"
+  rm -f "$V1_HELPER"
+  LEGACY_V1=0
+}
 install_daily_cleanup() {
   # Maintenance is opt-in and confined to the installer-owned log.
   # Never fetch or execute legacy cleanup.sh from a mutable branch.
@@ -423,6 +430,7 @@ patch_existing_v2() {
   install_mkauth_recibo_log_rotation
   install_session_helpers
   install_integrations
+  retire_legacy_v1
   echo "API: HTTP $CODE"
   install_daily_cleanup
   upgrade_existing_api
@@ -449,6 +457,8 @@ echo "Baixando imagens..."
 docker pull "$PG_IMAGE"
 docker pull "$REDIS_IMAGE"
 docker pull "$API_IMAGE"
+
+retire_legacy_v1
 
 docker network inspect "$NETWORK" >/dev/null 2>&1 ||
   docker network create "$NETWORK" >/dev/null
@@ -577,7 +587,7 @@ docker run -d \
 wait_api
 
 # No legacy deployment is retired automatically.
-echo "INFO: nenhuma instalacao V1 foi removida."
+echo "INFO: limpeza da V1 identificada concluida antes da criacao da V2."
 
 install_daily_cleanup
 install_log_rotation
@@ -590,7 +600,7 @@ echo "Evolution API v2 instalada com sucesso."
 echo "Porta: $API_PORT"
 echo "Manager: $(env_value SERVER_URL)/manager"
 echo "Global API Key: consulte AUTHENTICATION_API_KEY em $ENV_FILE (arquivo protegido)"
-echo "Evolution v1: preservada; migracao exige procedimento separado."
+echo "Evolution v1: removida quando identificada; backup privado preservado. Conecte o WhatsApp por novo QR."
 docker ps -a --filter name=evolution_v2_ \
   --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 
