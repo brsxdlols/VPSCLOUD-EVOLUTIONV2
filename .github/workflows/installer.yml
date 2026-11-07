@@ -1,0 +1,32 @@
+name: Installer safety checks
+on:
+  push:
+    branches: [main, fix/safe-evolution-v237-installer]
+  pull_request:
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: php addon/tests.php
+      - run: find addon -name "*.php" -exec php -l {} \;
+      - run: node tests/installer.test.cjs
+      - run: node tests/monitor-ui.test.cjs
+      - run: node tests/recibo-switch.test.cjs
+      - run: python3 -m unittest discover -s tests -p '*_test.py' -v
+      - name: Validate patches against the pinned Manager image
+        run: >-
+          docker run --rm --network none
+          -v "$PWD:/tmp/release:ro" --entrypoint node
+          evoapicloud/evolution-api@sha256:1bd8afc4a6cf48822e6cf02469aeae7bd35a12a6b616eacd1291926307f4d339
+          /tmp/release/tests/installer.test.cjs
+      - name: Validate web monitor authentication and secret handling
+        run: >-
+          docker run --rm --network none
+          -v "$PWD:/tmp/release:ro" -e NODE_PATH=/evolution/node_modules
+          --entrypoint node
+          evoapicloud/evolution-api@sha256:1bd8afc4a6cf48822e6cf02469aeae7bd35a12a6b616eacd1291926307f4d339
+          /tmp/release/tests/monitor.test.cjs
