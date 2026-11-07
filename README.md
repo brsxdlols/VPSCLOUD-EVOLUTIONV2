@@ -1,6 +1,6 @@
 # Evolution API 2.3.7 — instalador 7070 para MK-AUTH
 
-Esta branch contém o instalador revisado `install-7070-replace-v1.sh`, auxiliares de backup e novo pareamento, e correções do Manager. Não utilize os comandos antigos da `main` para instalar esta revisão.
+O instalador oficial é `install-7070-replace-v1.sh`, com monitor no host, alertas Telegram e addon de recibos. Use o comando abaixo. O atalho antigo `patch-update-v237.sh` foi desativado; `install.sh` legado não faz parte deste fluxo.
 
 **Estado:** revisão para instalação controlada e PATCH. Atualização automática de uma imagem diferente permanece bloqueada. Migração V1 → V2 não é automática. Os testes de proteção não substituem homologação completa de instalação, atualização e rollback.
 
@@ -9,13 +9,13 @@ Esta branch contém o instalador revisado `install-7070-replace-v1.sh`, auxiliar
 Baixe o arquivo para revisá-lo antes de executar:
 
 ```sh
-curl -fL --retry 3 https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/install-7070-replace-v1.sh -o /root/install-evolution-v2-7070.sh
+curl -fL --retry 3 https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/main/install-7070-replace-v1.sh -o /root/install-evolution-v2-7070.sh
 EVOLUTION_MODE=diagnose sh /root/install-evolution-v2-7070.sh
 # Depois de revisar o inventário e planejar a janela:
 sh /root/install-evolution-v2-7070.sh
 ```
 
-Para execução reproduzível, substitua o nome da branch pelo SHA do commit publicado. Dependências: root, Docker funcional, curl, OpenSSL, utilitários POSIX e pelo menos espaço suficiente para imagens, dados e backups. A API é fixada pelo digest testado da imagem 2.3.7. PostgreSQL 15 e Redis 7.4 continuam usando tags; uma instalação nova resolve essas tags no momento do pull. Atualizar essas dependências não faz parte deste instalador.
+Para execução reproduzível, substitua o nome da branch pelo SHA do commit publicado. Dependências: root, Docker funcional, curl, OpenSSL, Python 3, cron, logrotate, utilitários POSIX e pelo menos espaço suficiente para imagens, dados e backups. O addon requer o layout MK-AUTH reconhecido, PHP 7.1+ com mysqli/curl/json e MariaDB com suporte a CREATE OR REPLACE TRIGGER. Outras versões interrompem a instalação do addon para revisão. A API é fixada pelo digest testado da imagem 2.3.7. PostgreSQL 15 e Redis 7.4 continuam usando tags; uma instalação nova resolve essas tags no momento do pull. Atualizar essas dependências não faz parte deste instalador.
 
 ## Comportamento
 

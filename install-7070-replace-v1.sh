@@ -110,7 +110,7 @@ printf '%s  %s\n' '690c4d31234050b68ba737d79e3d4d358907fdc589fcc8cf66d2a6ffd6d44
 
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-monitor.tmp.XXXXXX)
   if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fix/safe-evolution-v237-installer/evolution-install-monitor.sh" -o "$HELPER_TMP" &&
-     printf '%s  %s\n' 'edf7f69013fa6022b1d0ee4e7c558313afb9dca1902a497f72f2259feb00dab1' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
+     printf '%s  %s\n' '30916395d18f42343b58a174ac593bc5558c4fcbaea6834e4d03aac181923fa1' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
     chmod 700 "$HELPER_TMP"
     mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-monitor
   else
