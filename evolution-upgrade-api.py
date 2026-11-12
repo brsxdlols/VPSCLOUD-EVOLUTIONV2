@@ -17,7 +17,7 @@ PG = 'evolution_v2_postgres'
 REDIS = 'evolution_v2_redis'
 IMAGE = 'evoapicloud/evolution-api@sha256:1bd8afc4a6cf48822e6cf02469aeae7bd35a12a6b616eacd1291926307f4d339'
 BACKUP_HELPER = '/usr/local/sbin/evolution-backup'
-PROBE = """(async()=>{let r=await fetch('http://127.0.0.1:8080/',{signal:AbortSignal.timeout(4000)});if(!r.ok)process.exit(1);let v=await r.json();let q=await fetch('http://127.0.0.1:8080/instance/fetchInstances',{headers:{apikey:process.env.AUTHENTICATION_API_KEY},signal:AbortSignal.timeout(4000)});if(!q.ok)process.exit(1);let a=await q.json();if(!Array.isArray(a))process.exit(1);console.log(JSON.stringify({version:v.version,instances:a.map(x=>({name:x.name||x.instance?.instanceName||x.instanceName})).sort((a,b)=>a.name.localeCompare(b.name))}))})().catch(()=>process.exit(1))"""
+PROBE = """(async()=>{const v=require('/evolution/package.json');let q=await fetch('http://127.0.0.1:8080/instance/fetchInstances',{headers:{apikey:process.env.AUTHENTICATION_API_KEY},signal:AbortSignal.timeout(4000)});if(!q.ok)process.exit(1);let a=await q.json();if(!Array.isArray(a))process.exit(1);console.log(JSON.stringify({version:v.version,instances:a.map(x=>({name:x.name||x.instance?.instanceName||x.instanceName})).sort((a,b)=>a.name.localeCompare(b.name))}))})().catch(()=>process.exit(1))"""
 
 
 def run(*args):

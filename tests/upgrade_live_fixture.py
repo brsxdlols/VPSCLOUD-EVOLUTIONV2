@@ -120,7 +120,7 @@ def main():
         for name in containers:
             try:
                 print('Fixture logs: ' + name)
-                print(run('docker', 'logs', '--tail', '150', name))
+                print(subprocess.check_output(['docker','logs','--tail','150',name],stderr=subprocess.STDOUT,universal_newlines=True,timeout=30))
             except Exception:
                 pass
         raise

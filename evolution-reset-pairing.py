@@ -64,7 +64,7 @@ def main():
     ready = False
     for _ in range(60):
         try:
-            if api('GET', '/')['http'] == 200:
+            if api('GET', '/instance/fetchInstances')['http'] == 200:
                 ready = True
                 break
         except Exception:
