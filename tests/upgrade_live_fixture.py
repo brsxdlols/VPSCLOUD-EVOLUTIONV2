@@ -108,6 +108,9 @@ def main():
             raise ValueError('Successful upgrade changed the Redis fixture.')
         print('PASS real 2.3.4 -> 2.3.7 upgrade preserves instance ID and Redis sentinel')
     except Exception:
+        for file in (PROJECT / 'backups').glob('*/*.private.log'):
+            print('Isolated fixture logs: ' + file.name)
+            print(file.read_text(errors='replace')[-12000:])
         for name in containers:
             try:
                 print('Fixture logs: ' + name)

@@ -304,12 +304,13 @@ def main():
     except Exception:
         if production:
             try:
-                try:
+                remaining = run('docker', 'ps', '-aq', '--filter', 'name=^/' + API + '$')
+                if remaining:
                     run('docker', 'update', '--restart=no', API)
                     run('docker', 'stop', '-t', '30', API)
+                    if inspect(API)['State']['Running']:
+                        raise ValueError('API nova nao parou; bancos preservados para recuperacao supervisionada.')
                     run('docker', 'rename', API, API + '_upgrade_failed_' + str(os.getpid()))
-                except Exception:
-                    pass
                 restore_postgres(folder, PG)
                 password = urllib.parse.unquote(urllib.parse.urlsplit(environment(info)['CACHE_REDIS_URI']).password or '')
                 restore_redis(folder, redis, password)

@@ -14,7 +14,7 @@ Inclui dump PostgreSQL, catálogo, RDB, verificação estrutural Redis, imagem A
 
 Restaure PostgreSQL e Redis em serviços separados, sem rede externa e sem uma segunda API ligada ao WhatsApp. Verifique tabelas, contagens, hash de autenticação e `creds`, sem revelar valores. `pg_restore -l` e `redis-check-rdb` são verificações necessárias, mas não substituem esse ensaio de restauração. No servidor acompanhado, uma restauração isolada dos dois bancos foi executada com sucesso.
 
-Um upgrade exige conferir também os demais volumes de aplicação, integrações, versão do Docker e migrações do banco. O instalador mantém a troca automática bloqueada enquanto a matriz completa não for homologada. Não use apenas o nome da tag como evidência de compatibilidade. Para substituir manualmente, preserve o container anterior parado e use a imagem por digest e o entrypoint original. Não execute dois containers API com a mesma identidade.
+O upgrade automático cobre o layout padrão com API 2.3.4, PostgreSQL local e Redis local, após backup e ensaio das migrações em cópia numa rede interna sem acesso ao WhatsApp. A imagem 2.3.7 usa seu entrypoint original para migrar. Falha após a troca restaura os dois bancos antes de iniciar a API antiga; falha de recuperação mantém a API parada. Outros layouts/versões exigem revisão. Não execute dois containers API com a mesma identidade. Ao concluir a instalação sobre V2, os pareamentos são encerrados para novo QR; o histórico e as instâncias são mantidos. Restaurar backup não reativa credenciais revogadas no WhatsApp.
 
 ## Quando escolher reconexão
 

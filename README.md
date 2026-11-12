@@ -81,7 +81,7 @@ node tests/installer.test.cjs
 
 Testes cobrem sintaxe POSIX, diagnóstico sem mutação, V1, volumes órfãos, nomes distintos, API parada, ENV ausente, rede distinta, estado parcial, confirmação do reparo e patch do Manager. Não executam instalação real nem enviam WhatsApp. Leia [operação e recuperação](docs/OPERACAO-SEGURA.md).
 
-Os arquivos legados `install.sh` e `patch-update-v237.sh` não compõem este fluxo revisado; não execute esses atalhos como alternativa. Nenhuma alteração foi publicada diretamente na `main` por esta revisão.
+Os arquivos legados `install.sh` e `patch-update-v237.sh` não compõem este fluxo revisado; não execute esses atalhos como alternativa. As versões são promovidas para `main` após os testes da branch de correção.
 
 
 ### Imagens dos alertas
