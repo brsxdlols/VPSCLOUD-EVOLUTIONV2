@@ -14,7 +14,7 @@ NAMES = ['evolution_v2_api', 'evolution_v2_redis', 'evolution_v2_postgres']
 
 
 def run(*args):
-    return subprocess.check_output(list(args), stderr=subprocess.DEVNULL, universal_newlines=True).strip()
+    return subprocess.check_output(list(args), stderr=subprocess.DEVNULL, universal_newlines=True, timeout=180).strip()
 
 
 def main():
@@ -47,7 +47,7 @@ def main():
             'CACHE_REDIS_ENABLED': 'true', 'CACHE_REDIS_SAVE_INSTANCES': 'true',
             'CACHE_REDIS_URI': 'redis://:ci-only-redis@evolution_v2_redis:6379/6',
             'CACHE_REDIS_PREFIX_KEY': 'ci-upgrade', 'CACHE_LOCAL_ENABLED': 'false',
-            'LOG_LEVEL': 'ERROR,WARN', 'LOG_BAILEYS': 'error', 'WEBHOOK_GLOBAL_ENABLED': 'false',
+            'LOG_LEVEL': 'ERROR,WARN,INFO,LOG,DEBUG', 'LOG_BAILEYS': 'error', 'WEBHOOK_GLOBAL_ENABLED': 'false',
             'DATABASE_SAVE_DATA_INSTANCE': 'true', 'DATABASE_SAVE_DATA_NEW_MESSAGE': 'true',
             'DATABASE_SAVE_DATA_CONTACTS': 'true', 'DATABASE_SAVE_DATA_CHATS': 'true',
             'DATABASE_SAVE_DATA_HISTORIC': 'true', 'DATABASE_SAVE_MESSAGE_UPDATE': 'false',
@@ -68,6 +68,7 @@ def main():
             except Exception:
                 time.sleep(1)
         containers.append(NAMES[0])
+        print('Starting isolated 2.3.4 fixture', flush=True)
         run('docker', 'run', '-d', '--name', NAMES[0], '--network', 'evolution_v2_net',
             '--env-file', str(PROJECT / 'evolution-v2.env'), '-p', '127.0.0.1:7070:8080',
             'evoapicloud/evolution-api:v2.3.4')
@@ -108,13 +109,18 @@ def main():
             raise ValueError('Successful upgrade changed the Redis fixture.')
         print('PASS real 2.3.4 -> 2.3.7 upgrade preserves instance ID and Redis sentinel')
     except Exception:
+        try:
+            print(run('docker', 'exec', NAMES[0], 'node', '-e', "(async()=>{for(const p of ['/', '/instance/fetchInstances']){try{const r=await fetch('http://127.0.0.1:8080'+p,{headers:{apikey:process.env.AUTHENTICATION_API_KEY},signal:AbortSignal.timeout(3000)});console.log(p,r.status,await r.text())}catch(e){console.log(p,e.message)}}})()"))
+            print(run('docker', 'exec', NAMES[0], 'ps', '-ef'))
+        except Exception:
+            pass
         for file in (PROJECT / 'backups').glob('*/*.private.log'):
             print('Isolated fixture logs: ' + file.name)
             print(file.read_text(errors='replace')[-12000:])
         for name in containers:
             try:
                 print('Fixture logs: ' + name)
-                print(run('docker', 'logs', '--tail', '40', name))
+                print(run('docker', 'logs', '--tail', '150', name))
             except Exception:
                 pass
         raise

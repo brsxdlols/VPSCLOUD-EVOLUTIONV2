@@ -15,7 +15,7 @@ p = importlib.util.module_from_spec(spec); spec.loader.exec_module(p)
 
 
 class UpgradeTests(unittest.TestCase):
-    def fixture(self, stage_failure=False, production_failure=False, restore_failure=False):
+    def fixture(self, stage_failure=False, production_failure=False, restore_failure=False, stop_failure=False):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         root = Path(tmp.name); folder = root / 'backups/session-test'; folder.mkdir(parents=True)
         monitor = root / 'monitor'; monitor.mkdir()
@@ -29,6 +29,10 @@ class UpgradeTests(unittest.TestCase):
         def run(*args):
             events.append(args)
             if args[:3] == ('docker','image','inspect'): return json.dumps([target])
+            if args[:3] == ('docker','ps','-aq'): return 'new-api-id'
+            if args[:2] == ('docker','stop'):
+                if stop_failure: raise ValueError('fake stop failure')
+                api['State']['Running'] = False
             return ''
         def backup(*args, **kwargs):
             events.append(('BACKUP', kwargs.get('env',{}).get('EVOLUTION_BACKUP_KEEP_API_STOPPED')))
@@ -68,6 +72,12 @@ class UpgradeTests(unittest.TestCase):
 
     def test_failed_database_recovery_does_not_start_old_api(self):
         _, events = self.fixture(production_failure=True,restore_failure=True)
+        self.assertNotIn(('docker','start',u.API),events)
+
+    def test_running_failed_candidate_blocks_database_restore(self):
+        _, events = self.fixture(production_failure=True,stop_failure=True)
+        self.assertNotIn(('RESTORE_PG',),events)
+        self.assertNotIn(('RESTORE_REDIS',),events)
         self.assertNotIn(('docker','start',u.API),events)
 
     def test_external_database_is_rejected(self):
