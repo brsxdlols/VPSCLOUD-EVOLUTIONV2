@@ -62,7 +62,7 @@ def main():
             '-v', volumes[1] + ':/data', 'redis:7.4-alpine', 'redis-server', '--appendonly', 'yes', '--requirepass', 'ci-only-redis')
         for _ in range(60):
             try:
-                run('docker', 'exec', NAMES[2], 'pg_isready', '-U', 'evolution', '-d', 'evolution_api')
+                run('docker', 'exec', NAMES[2], 'pg_isready', '-h', '127.0.0.1', '-U', 'evolution', '-d', 'evolution_api')
                 run('docker', 'exec', '-e', 'REDISCLI_AUTH=ci-only-redis', NAMES[1], 'redis-cli', 'PING')
                 break
             except Exception:

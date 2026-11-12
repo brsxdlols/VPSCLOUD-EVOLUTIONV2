@@ -15,6 +15,11 @@ p = importlib.util.module_from_spec(spec); spec.loader.exec_module(p)
 
 
 class UpgradeTests(unittest.TestCase):
+    def test_probe_uses_authenticated_api_and_installed_package_version(self):
+        self.assertIn("require('/evolution/package.json')",u.PROBE)
+        self.assertIn('/instance/fetchInstances',u.PROBE)
+        self.assertNotIn("8080/'",u.PROBE)
+
     def fixture(self, stage_failure=False, production_failure=False, restore_failure=False, stop_failure=False):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         root = Path(tmp.name); folder = root / 'backups/session-test'; folder.mkdir(parents=True)

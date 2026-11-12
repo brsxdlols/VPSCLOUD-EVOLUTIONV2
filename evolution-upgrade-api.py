@@ -142,7 +142,7 @@ def rehearsal(folder, info, pg, redis, target):
         ready = False
         for _ in range(60):
             try:
-                run('docker', 'exec', pn, 'pg_isready', '-U', 'evolution', '-d', 'evolution_api')
+                run('docker', 'exec', pn, 'pg_isready', '-h', '127.0.0.1', '-U', 'evolution', '-d', 'evolution_api')
                 ready = True
                 break
             except Exception:
