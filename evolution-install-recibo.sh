@@ -7,29 +7,29 @@ PROJECT=/opt/vpscloud-evolution-v2
 STAGE=$(mktemp -d "$PROJECT/.recibo-download.XXXXXX")
 # Retain staging on failure for supervised diagnosis; never remove backups.
 mkdir -p "$STAGE/addon/Recibo_Evolution" "$PROJECT/monitor"
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/evolution-install-recibo.py" -o "$STAGE/evolution-install-recibo.py"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/evolution-install-recibo.py" -o "$STAGE/evolution-install-recibo.py"
 printf '%s  %s\n' '0766b87f206d1167e94204ad6395cf51a0a35091f3070ba765341f6f6e412302' "$STAGE/evolution-install-recibo.py" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/setup.php" -o "$STAGE/addon/setup.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/setup.php" -o "$STAGE/addon/setup.php"
 printf '%s  %s\n' '2d96437a850435fcffe9e1321d90110edd50dd1d8053916acac78c5ae457a47a' "$STAGE/addon/setup.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/agendar_limpeza.php" -o "$STAGE/addon/Recibo_Evolution/agendar_limpeza.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/agendar_limpeza.php" -o "$STAGE/addon/Recibo_Evolution/agendar_limpeza.php"
 printf '%s  %s\n' '642f2c08dcc6ddf57e107a05e2eaf6bd77fcb1c15d7fef7df59950e07ba2f3ce' "$STAGE/addon/Recibo_Evolution/agendar_limpeza.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/api.php" -o "$STAGE/addon/Recibo_Evolution/api.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/api.php" -o "$STAGE/addon/Recibo_Evolution/api.php"
 printf '%s  %s\n' 'adb4e7f660a720ab77c1747bfe83a1a1d2300343365a713a1d9828d6310e284a' "$STAGE/addon/Recibo_Evolution/api.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/common.php" -o "$STAGE/addon/Recibo_Evolution/common.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/common.php" -o "$STAGE/addon/Recibo_Evolution/common.php"
 printf '%s  %s\n' 'dbe1da8c320a33594232e6e671c65fe3115a6462872db90b7bed889e3951d06c' "$STAGE/addon/Recibo_Evolution/common.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/enviozap.php" -o "$STAGE/addon/Recibo_Evolution/enviozap.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/enviozap.php" -o "$STAGE/addon/Recibo_Evolution/enviozap.php"
 printf '%s  %s\n' 'bd19256f8e0c9a3a6075ab9c0ef4be8b3fcabd6511cb9a5d9408628561970a0a' "$STAGE/addon/Recibo_Evolution/enviozap.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/index.php" -o "$STAGE/addon/Recibo_Evolution/index.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/index.php" -o "$STAGE/addon/Recibo_Evolution/index.php"
 printf '%s  %s\n' 'd8c70d7cea575f7fee8d13345c2e87bc94139bdd7a85acba53020e45860b9778' "$STAGE/addon/Recibo_Evolution/index.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/limpar_log.php" -o "$STAGE/addon/Recibo_Evolution/limpar_log.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/limpar_log.php" -o "$STAGE/addon/Recibo_Evolution/limpar_log.php"
 printf '%s  %s\n' '15cc4ad7e1ae6c5a2b403e25ed0f50a5d61644329de91276b9cc67aae18c2987' "$STAGE/addon/Recibo_Evolution/limpar_log.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/limpar_tabela.php" -o "$STAGE/addon/Recibo_Evolution/limpar_tabela.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/limpar_tabela.php" -o "$STAGE/addon/Recibo_Evolution/limpar_tabela.php"
 printf '%s  %s\n' '71656928de7d3cf62fe1a0bad75d0d498124ddadd31a1ed764521207d714c108' "$STAGE/addon/Recibo_Evolution/limpar_tabela.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/manifest.json" -o "$STAGE/addon/Recibo_Evolution/manifest.json"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/manifest.json" -o "$STAGE/addon/Recibo_Evolution/manifest.json"
 printf '%s  %s\n' 'f371891c303e2ef628f69ae79684d88bbb202cd2a25d1f20282486368bab6828' "$STAGE/addon/Recibo_Evolution/manifest.json" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/addon/Recibo_Evolution/obterLimpeza.php" -o "$STAGE/addon/Recibo_Evolution/obterLimpeza.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/addon/Recibo_Evolution/obterLimpeza.php" -o "$STAGE/addon/Recibo_Evolution/obterLimpeza.php"
 printf '%s  %s\n' '6a4a55842b0ec941aa5c8b067271063351f388846b33d86ae0fd86d1ee3cabd5' "$STAGE/addon/Recibo_Evolution/obterLimpeza.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/2f5700a0477a6e6bde015d1ad1f1138b75bf4ff8/evolution-log-policy.sh" -o "$STAGE/evolution-log-policy.sh"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/evolution-log-policy.sh" -o "$STAGE/evolution-log-policy.sh"
 printf '%s  %s\n' '7b3888377a98bbd14a0d5b8718c78edba67c27acf9dab165ebbaf96910d8a9d1' "$STAGE/evolution-log-policy.sh" | sha256sum -c - >/dev/null
 mv -f "$STAGE/evolution-log-policy.sh" "$PROJECT/monitor/evolution-log-policy.sh"
 sh "$PROJECT/monitor/evolution-log-policy.sh"
