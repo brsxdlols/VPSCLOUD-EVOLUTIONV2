@@ -31,7 +31,7 @@ class KeyConfigurationTests(unittest.TestCase):
         return env,receipt,calls
     def test_rotation_preserves_data_and_syncs_matching_local_receipt(self):
         env,receipt,calls=self.run_rotation();self.assertIn('AUTHENTICATION_API_KEY=new-key-123',env.read_text());self.assertIn('DATABASE_PASSWORD=fake-db',env.read_text());self.assertEqual(json.loads(receipt.read_text())['token'],'new-key-123');self.assertEqual(receipt.stat().st_mode&0o777,0o660)
-        runs=[x for x in calls if x[:2]==['docker','run']];self.assertEqual(len(runs),1);self.assertEqual(runs[0][-1],'sha256:existing');self.assertIn('/existing/manager:/evolution/manager/dist:ro',runs[0]);self.assertNotIn('/evolution/ops-monitor', ' '.join(runs[0]));self.assertFalse(any(x[1:3]==['volume','rm'] for x in calls))
+        runs=[x for x in calls if x[:2]==['docker','run']];self.assertEqual(len(runs),1);self.assertIn('sha256:existing',runs[0]);self.assertIn('/existing/manager:/evolution/manager/dist:ro',runs[0]);self.assertNotIn('/evolution/ops-monitor', ' '.join(runs[0]));self.assertFalse(any(x[1:3]==['volume','rm'] for x in calls))
     def test_unrelated_receipt_token_preserved(self):
         _,receipt,_=self.run_rotation(token='instance-key-456');self.assertEqual(json.loads(receipt.read_text())['token'],'instance-key-456')
     def test_failed_health_restores_previous_container_and_files(self):

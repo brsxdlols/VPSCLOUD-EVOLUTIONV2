@@ -42,5 +42,6 @@ done
 rmdir "$STAGE/assets"
 rmdir "$STAGE"
 trap - EXIT
+if [ "${1:-}" = --prepare-only ]; then echo "Auxiliares do monitor preparados."; exit 0; fi
 sh "$MONITOR/evolution-log-policy.sh"
 exec python3 "$MONITOR/evolution-enable-monitor.py" "$@"

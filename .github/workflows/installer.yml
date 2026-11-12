@@ -4,6 +4,14 @@ on:
     branches: [main, fix/safe-evolution-v237-installer]
   pull_request:
 jobs:
+  upgrade_compatibility:
+    if: github.ref == 'refs/heads/fix/safe-evolution-v237-installer' && contains(github.event.head_commit.message, '[upgrade-e2e]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate upgrade and database rollback in disposable Docker fixture
+        run: sudo -E env VPSCLOUD_CI_UPGRADE_TEST=1 python3 tests/upgrade_live_fixture.py
   safety:
     runs-on: ubuntu-latest
     steps:

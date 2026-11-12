@@ -15,7 +15,7 @@ STOPPED=0
 finish() {
   rc=$?
   trap - EXIT
-  if [ "$STOPPED" = 1 ]; then docker start "$API" >/dev/null || rc=1; fi
+  if [ "$STOPPED" = 1 ] && { [ "$rc" != 0 ] || [ "${EVOLUTION_BACKUP_KEEP_API_STOPPED:-0}" != 1 ]; }; then docker start "$API" >/dev/null || rc=1; fi
   rmdir "$LOCK" 2>/dev/null || true
   exit "$rc"
 }
@@ -59,8 +59,7 @@ docker exec "$PG" rm -f "$TMP"
 docker exec -e REDISCLI_AUTH="$RP" "$REDIS" redis-cli SAVE >/dev/null
 docker exec "$REDIS" redis-check-rdb /data/dump.rdb > "$B/redis-check.txt"
 docker cp "$REDIS:/data/dump.rdb" "$B/redis.rdb"
-docker start "$API" >/dev/null
-STOPPED=0
+if [ "${EVOLUTION_BACKUP_KEEP_API_STOPPED:-0}" != 1 ]; then docker start "$API" >/dev/null; STOPPED=0; fi
 chmod 600 "$B"/*
 (cd "$B" && sha256sum postgres.dump redis.rdb api-image.tar > SHA256SUMS)
 printf '%s\n' "$B" > "$PROJECT_DIR/backups/LATEST-SESSION-BACKUP"

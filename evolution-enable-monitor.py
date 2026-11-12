@@ -30,8 +30,10 @@ def recreate_args(info, env_file, with_monitor=True):
     if host.get('Memory') or host.get('NanoCpus') or host.get('CpuQuota') or host.get('CpuShares') or host.get('PidMode') or host.get('ReadonlyRootfs'):
         raise ValueError('Restricoes Docker adicionais: adaptacao manual necessaria')
     conf = info['Config']
-    if conf.get('Entrypoint') != ['/bin/bash', '-c', '. ./Docker/scripts/deploy_database.sh && npm run start:prod'] or conf.get('Cmd'):
-        raise ValueError('Entrypoint nao padrao: adaptacao manual necessaria')
+    entrypoint = conf.get('Entrypoint') or []
+    cmd = conf.get('Cmd') or []
+    if not isinstance(entrypoint,list) or not isinstance(cmd,list) or not all(isinstance(x,str) for x in entrypoint+cmd) or not entrypoint+cmd:
+        raise ValueError('Comando de inicializacao invalido; container atual preservado')
     if conf.get('User') not in ('', 'root', '0', None):
         raise ValueError('Usuario Docker nao padrao')
     args = ['docker', 'run', '-d', '--name', API, '--restart', 'always', '--network', host['NetworkMode'], '--env-file', str(env_file)]
@@ -59,7 +61,11 @@ def recreate_args(info, env_file, with_monitor=True):
     if with_monitor: args += ['-v', str(MONITOR) + ':/evolution/ops-monitor:rw']
     for key, value in (conf.get('Labels') or {}).items():
         args += ['--label', key + '=' + value]
+    # Explicitly reproduce the existing executable and arguments, independent of image defaults.
+    args += ['--entrypoint',entrypoint[0] if entrypoint else '']
+    if conf.get('WorkingDir'): args += ['--workdir',conf['WorkingDir']]
     args.append(info['Image'])
+    args += entrypoint[1:]+cmd
     return args
 
 

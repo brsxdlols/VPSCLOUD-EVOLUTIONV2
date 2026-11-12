@@ -2,7 +2,7 @@
 
 O instalador oficial é `install-7070-replace-v1.sh`, com monitor no host, alertas Telegram e addon de recibos. Use o comando abaixo. O atalho antigo `patch-update-v237.sh` foi desativado; `install.sh` legado não faz parte deste fluxo.
 
-**Estado:** revisão para instalação controlada e PATCH. Atualização automática de uma imagem diferente permanece bloqueada. Uma V1 reconhecida é removida automaticamente, com backup privado, antes de uma V2 nova. Não é migração de sessões ou histórico; será necessário novo QR. Os testes de proteção não substituem homologação completa de instalação, atualização e rollback.
+**Estado:** instalação e atualização controladas. O fluxo padrão 2.3.4 → 2.3.7 cria backup, ensaia as migrações numa cópia sem acesso externo e valida a versão real da API. Uma V1 reconhecida é removida com backup privado antes de criar a V2. Em V2 existente, a execução encerra os pareamentos ao concluir e exige novo QR, preservando instâncias e histórico.
 
 ## Download e execução
 
@@ -20,9 +20,11 @@ Para execução reproduzível, substitua o nome da branch pelo SHA do commit pub
 ## Comportamento
 
 - Sem V2 e sem volumes V2 conhecidos: prepara PostgreSQL, Redis e Manager; cria uma única API com o entrypoint original, incluindo migrações.
-- V2 com nomes e topologia esperados: preserva ENV, bancos e sessão; pergunta a chave e mantém a atual quando você pressiona Enter; aplica PATCH do Manager e instala auxiliares. O patch usa correspondência explícita de código e falha se o bundle não for reconhecido.
+- V2 com nomes e topologia esperados: preserva bancos e instâncias; pergunta a chave e mantém a atual com Enter; aplica PATCH do Manager, atualiza a API compatível e instala auxiliares. Ao concluir, desconecta os pareamentos para novo QR. O patch falha se o bundle não for reconhecido.
 - API parada, backend ausente, volumes órfãos, rede diferente ou nome de container não padrão: interrompe para recuperação supervisionada.
-- Imagem diferente: pode preparar dump e baixar a imagem, mas não substitui o container. O dump preparatório não é backup completo da autenticação.
+- API 2.3.4 padrão: para a API, gera backup validado de PostgreSQL, Redis e imagem; testa 2.3.7 em rede interna com volumes separados antes da substituição. Em falha após substituir, restaura PostgreSQL e Redis antes de iniciar a API antiga. Se a restauração falhar, mantém a API parada e informa o backup para recuperação. Exige ao menos 4 GiB mais três vezes o tamanho dos dados livres; outras versões ou backends exigem revisão.
+
+O monitor preserva o entrypoint/comando efetivo existente. O upgrade usa o entrypoint original da imagem nova para executar suas migrações. O novo QR é obrigatório em cada execução sobre V2 existente; apenas `EVOLUTION_FORCE_RECONNECT=0` desativa explicitamente essa política. O backup preserva dados, mas não reativa credenciais revogadas pelo logout no WhatsApp. A versão é verificada pela API e pela imagem; baixe novamente o instalador antes de executar.
 
 Nomes suportados: `evolution_v2_api`, `evolution_v2_postgres`, `evolution_v2_redis`. Diretório padrão: `/opt/vpscloud-evolution-v2`. A porta externa é 7070 (`EVOLUTION_PORT` em instalação nova). Para NAT use `EVOLUTION_SERVER_URL=http://ENDERECO_EXTERNO:PORTA`. O instalador não cria encaminhamento no roteador nem muda o MK-AUTH.
 
@@ -116,3 +118,5 @@ Pastas reconhecidas: `/opt/evolution`, `/opt/evolution-api`, `/opt/vpscloud-evol
 A V2 usa bancos novos; configure o MK-AUTH para a nova URL/instância/chave e conecte o WhatsApp por novo QR. Esta operação descarta o uso das sessões antigas e não transfere automaticamente dados ou histórico da V1. O helper `evolution-retire-v1.py --plan` oferece inventário sem parar/excluir a V1. O instalador em `EVOLUTION_MODE=diagnose` continua somente leitura.
 
 Instalações novas do addon começam desativadas. Há um único switch destacado no topo para os envios; ele substitui a antiga combinação de controle principal e checkbox de automático. Em atualizações, o estado efetivo anterior é preservado (qualquer bloqueio anterior continua desligado). O teste fictício e a consulta retroativa permanecem.
+
+O auxiliar do monitor preserva explicitamente Entrypoint, Cmd e diretório de trabalho da API existente, além da imagem por ID, portas e mounts. Assim, instalações antigas com início direto por Node ou wrapper de shell podem receber o monitor sem trocar o comando de execução ou a versão da API.

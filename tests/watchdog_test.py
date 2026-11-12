@@ -137,12 +137,25 @@ class WatchdogTests(unittest.TestCase):
                 self.assertEqual(issues, expected)
                 self.assertEqual(info['used_percent'], used)
 
+    def test_existing_entrypoint_and_command_are_reproduced(self):
+        pairs=[(None,['node','./dist/src/main.js']),(['/bin/sh','-c'],['node ./dist/src/main.js']),(['docker-entrypoint.sh'],['npm','run','start:prod'])]
+        for entry,cmd in pairs:
+            info={'Image':'sha256:unchanged','HostConfig':{'NetworkMode':'evolution_v2_net'},'Config':{'Entrypoint':entry,'Cmd':cmd,'WorkingDir':'/evolution'},'Mounts':[]}
+            args=installer.recreate_args(info,Path('/backup/effective.env'),with_monitor=False)
+            self.assertEqual(args[args.index('--entrypoint')+1],entry[0] if entry else '')
+            self.assertEqual(args[args.index('sha256:unchanged')+1:],(entry or [])[1:]+cmd)
+            self.assertEqual(args[args.index('--workdir')+1],'/evolution')
+        info['Config']['Entrypoint']='invalid'
+        with self.assertRaises(ValueError):installer.recreate_args(info,Path('/backup/env'))
+
     def test_docker_recreation_preserves_port_mount_and_image(self):
         info = {'Image': 'sha256:existing', 'HostConfig': {'NetworkMode': 'evolution_v2_net', 'PortBindings': {'8080/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '7070'}]}}, 'Config': {'Entrypoint': ['/bin/bash', '-c', '. ./Docker/scripts/deploy_database.sh && npm run start:prod'], 'Cmd': None}, 'Mounts': [{'Type': 'bind', 'Source': '/existing/manager', 'Destination': '/evolution/manager/dist', 'RW': False}]}
         args = installer.recreate_args(info, Path('/backup/effective.env'))
         self.assertIn('0.0.0.0:7070:8080/tcp', args)
         self.assertIn('/existing/manager:/evolution/manager/dist:ro', args)
-        self.assertEqual(args[-1], 'sha256:existing')
+        self.assertIn('sha256:existing',args)
+        self.assertEqual(args[args.index('--entrypoint')+1],'/bin/bash')
+        self.assertEqual(args[args.index('sha256:existing')+1:],['-c','. ./Docker/scripts/deploy_database.sh && npm run start:prod'])
         info['HostConfig']['Privileged'] = True
         with self.assertRaises(ValueError):
             installer.recreate_args(info, Path('/backup/effective.env'))
