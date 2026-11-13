@@ -19,6 +19,8 @@ Para execução reproduzível, substitua o nome da branch pelo SHA do commit pub
 
 ## Comportamento
 
+- Recuperação de rollback ativo: se `evolution_v2_api` está parado e existe um único `evolution_v2_api_rollback_*` ativo na mesma rede, porta 7070, bancos e volumes, salva os dois inspects em backup privado e recupera os nomes sem parar/reiniciar o serviço ativo. O container parado é preservado com reinício automático desabilitado. Diferenças ou múltiplos candidatos interrompem para revisão. Depois segue o upgrade normal, com backup completo e novo QR.
+
 - Sem V2 e sem volumes V2 conhecidos: prepara PostgreSQL, Redis e Manager; cria uma única API com o entrypoint original, incluindo migrações.
 - V2 com nomes e topologia esperados: preserva bancos e instâncias; pergunta a chave e mantém a atual com Enter; aplica PATCH do Manager, atualiza a API compatível e instala auxiliares. Ao concluir, desconecta os pareamentos para novo QR. O patch falha se o bundle não for reconhecido.
 - API parada, backend ausente, volumes órfãos, rede diferente ou nome de container não padrão: interrompe para recuperação supervisionada.

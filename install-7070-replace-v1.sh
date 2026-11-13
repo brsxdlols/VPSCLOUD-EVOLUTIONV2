@@ -328,9 +328,65 @@ require("child_process").execFileSync(process.execPath,["--input-type=module","-
 fs.writeFileSync(p+".tmp",s);fs.renameSync(p+".tmp",p);
 MANAGER_PATCH
 }
+recover_active_rollback() {
+  python3 - <<'RECOVER_ACTIVE_ROLLBACK'
+import json, os, subprocess, sys, time
+from pathlib import Path
+API='evolution_v2_api'
+PROJECT=Path('/opt/vpscloud-evolution-v2')
+def run(*args):
+    return subprocess.check_output(list(args),stderr=subprocess.DEVNULL,universal_newlines=True).strip()
+def inspect(name):
+    return json.loads(run('docker','inspect',name))[0]
+def main():
+    os.umask(0o077)
+    stopped=inspect(API)
+    if stopped['State']['Running']: return
+    candidates=[n for n in run('docker','ps','--format','{{.Names}}').splitlines() if n.startswith(API+'_rollback_')]
+    if not candidates: return
+    if len(candidates)!=1: raise ValueError('Multiplos rollbacks ativos; recuperacao automatica bloqueada.')
+    old=candidates[0]; active=inspect(old)
+    if not active['State']['Running']: raise ValueError('Rollback nao esta ativo; recuperacao abortada.')
+    for item in [stopped,active]:
+        conf=item['Config']; host=item['HostConfig']
+        if host.get('NetworkMode')!='evolution_v2_net' or not conf.get('Image','').startswith(('evoapicloud/evolution-api:','evoapicloud/evolution-api@sha256:')):
+            raise ValueError('Imagem ou rede nao reconhecida; recuperacao bloqueada.')
+    ports=active['HostConfig'].get('PortBindings') or {}
+    if ports != stopped['HostConfig'].get('PortBindings') or not any(p.get('HostPort')=='7070' for p in ports.get('8080/tcp',[]) or []):
+        raise ValueError('Portas divergentes; recuperacao automatica bloqueada.')
+    def env(item): return dict(x.split('=',1) for x in item['Config'].get('Env',[]) if '=' in x)
+    a,b=env(active),env(stopped)
+    for field in ['DATABASE_CONNECTION_URI','CACHE_REDIS_URI']:
+        if not a.get(field) or a[field]!=b.get(field): raise ValueError('Bancos divergentes; recuperacao automatica bloqueada.')
+    def mounts(item):
+        return sorted((x['Type'],x.get('Name') or x.get('Source'),x['Destination'],x.get('RW')) for x in item.get('Mounts',[]) if x['Destination']!='/evolution/ops-monitor')
+    if mounts(active)!=mounts(stopped): raise ValueError('Volumes divergentes; recuperacao automatica bloqueada.')
+    stamp=time.strftime('%Y%m%d-%H%M%S')+'-'+str(os.getpid())
+    folder=PROJECT/'backups'/('recover-active-rollback-'+stamp)
+    folder.mkdir(parents=True,mode=0o700)
+    (folder/'containers.json').write_text(json.dumps([stopped,active]))
+    saved=API+'_stopped_'+stamp
+    # Never start the failed API or restart the live rollback.
+    run('docker','update','--restart=no',API)
+    run('docker','rename',API,saved)
+    try: run('docker','rename',old,API)
+    except Exception:
+        run('docker','rename',saved,API)
+        raise
+    print('Rollback ativo recuperado como evolution_v2_api, sem reiniciar. Backup: '+str(folder))
+if __name__=='__main__':
+    try: main()
+    except Exception as error:
+        print(str(error) if isinstance(error,ValueError) else 'Falha ao recuperar nomes; confira os containers e o backup privado.',file=sys.stderr)
+        sys.exit(1)
+RECOVER_ACTIVE_ROLLBACK
+}
 patch_existing_v2() {
   echo "Evolution V2 existente detectada. Atualizacao com backup e novo QR obrigatorio ao concluir."
   [ -s "$ENV_FILE" ] || { echo "ERRO: ENV ausente; nenhuma alteracao aplicada."; exit 1; }
+  if [ "$(docker inspect --format '{{.State.Running}}' "$API_CONTAINER")" != true ] && docker ps --format '{{.Names}}' | grep -q '^evolution_v2_api_rollback_'; then
+    recover_active_rollback
+  fi
   [ "$(docker inspect --format '{{.State.Running}}' "$API_CONTAINER")" = true ] || { echo "ERRO: API parada; recuperacao manual necessaria."; exit 1; }
   [ "$(docker inspect --format '{{.HostConfig.NetworkMode}}' "$API_CONTAINER")" = "$NETWORK" ] || { echo "ERRO: topologia nao padrao; PATCH abortado."; exit 1; }
   for dependency in "$PG_CONTAINER" "$REDIS_CONTAINER"; do

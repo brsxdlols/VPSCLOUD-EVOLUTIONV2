@@ -18,6 +18,7 @@ case "$1 $2" in
   esac; exit 1;;
  'volume inspect') [ "$SCENARIO" = orphan-volume ] || [ "$SCENARIO" = v1 ]; exit $?;;
  'ps -a') [ "$SCENARIO" != nonstandard ] || echo custom/evolution-api:v1; exit 0;;
+ 'ps --format') exit 0;;
  'volume ls') exit 0;;
 esac
 if [ "$1" = inspect ]; then
