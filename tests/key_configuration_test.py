@@ -10,6 +10,12 @@ import tempfile
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('key_monitor',ROOT/'evolution-enable-monitor.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class KeyConfigurationTests(unittest.TestCase):
+    def test_rotation_syncs_private_picker_key_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);bridge=root/'bridge.json';bridge.write_text(json.dumps({'secret':'keep','address':'172.16.30.25:7070','api_key':'old'}));(root/'evolution-v2.env').write_text('AUTHENTICATION_API_KEY=old\n')
+            with patch.object(m,'PROJECT',root),patch.object(m,'WEB_BRIDGE',bridge),patch.object(m,'RECEIPT',root/'absent'):
+                updated=json.loads(m.key_updates('old','new')[bridge]);self.assertEqual(updated['api_key'],'new');self.assertEqual(updated['secret'],'keep');self.assertEqual(updated['address'],'172.16.30.25:7070')
+                self.assertNotIn(bridge,m.key_updates('unrelated','new'))
     def test_validate_and_preserve_effective_environment(self):
         env=['AUTHENTICATION_API_KEY=old-key-123','DATABASE_PASSWORD=fake-db','NODE_OPTIONS=--trace-warnings']
         updated,old,new=m.key_env(env,'new-key-123');self.assertEqual(old,'old-key-123');self.assertEqual(new,'new-key-123');self.assertIn('DATABASE_PASSWORD=fake-db',updated);self.assertEqual(sum(x.startswith('AUTHENTICATION_API_KEY=') for x in updated),1)

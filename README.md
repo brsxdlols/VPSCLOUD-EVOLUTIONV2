@@ -132,3 +132,5 @@ A V2 usa bancos novos; configure o MK-AUTH para a nova URL/instância/chave e co
 Instalações novas do addon começam desativadas. Há um único switch destacado no topo para os envios; ele substitui a antiga combinação de controle principal e checkbox de automático. Em atualizações, o estado efetivo anterior é preservado (qualquer bloqueio anterior continua desligado). O teste fictício e a consulta retroativa permanecem.
 
 O auxiliar do monitor preserva explicitamente Entrypoint, Cmd e diretório de trabalho da API existente, além da imagem por ID, portas e mounts. Assim, instalações antigas com início direto por Node ou wrapper de shell podem receber o monitor sem trocar o comando de execução ou a versão da API.
+
+Na configuração nativa **Opções → WhatsApp → Servidor**, o botão **Ver instâncias do Evolution** consulta a API local e mostra o estado de conexão WhatsApp. **Usar esta instância** preenche servidor, nome e chave individual; clique em **Gravar** para salvar. A consulta exige a sessão do MK-AUTH; a lista não expõe chaves. Selecionar não conecta, desconecta nem envia mensagens.

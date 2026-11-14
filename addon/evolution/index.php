@@ -1,9 +1,47 @@
 <?php
+$picker=isset($_GET['instances']);
+if($picker){
+ header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
+ register_shutdown_function(function(){if(!defined('EVOLUTION_PICKER_READY')){while(ob_get_level())ob_end_clean();http_response_code(401);echo json_encode(['error'=>'Entre novamente pelo MK-AUTH.']);}});
+}
 ob_start();
 include __DIR__.'/addons.class.php';
 ob_end_clean();
+if($picker)define('EVOLUTION_PICKER_READY',true);
+function picker_reply($code,$body){http_response_code($code);echo json_encode($body,JSON_UNESCAPED_UNICODE);exit;}
+if($picker && (session_status()!==PHP_SESSION_ACTIVE || (empty($_SESSION['mka_logado']) && empty($_SESSION['MKA_Logado']))))picker_reply(401,['error'=>'Entre novamente pelo MK-AUTH.']);
 if(session_status()!==PHP_SESSION_ACTIVE || (empty($_SESSION['mka_logado']) && empty($_SESSION['MKA_Logado']))){http_response_code(401);exit('Entre pelo MK-AUTH para acessar a Evolution.');}
 $config=json_decode(@file_get_contents('/opt/mk-auth/dados/evolution/bridge.json'),true);
+if($picker){
+ if(!is_array($config)||empty($config['api_key'])||empty($config['port'])||!is_int($config['port'])||$config['port']<1||$config['port']>65535)picker_reply(503,['error'=>'Atualize o addon Evolution para habilitar a lista.']);
+ $method=$_SERVER['REQUEST_METHOD']??'GET';
+ if($method!=='GET'&&$method!=='POST')picker_reply(405,['error'=>'Metodo nao permitido.']);
+ if(empty($_SESSION['evolution_picker_csrf']))$_SESSION['evolution_picker_csrf']=bin2hex(random_bytes(32));
+ $csrf=$_SESSION['evolution_picker_csrf'];
+ if($method==='POST'&&!hash_equals($csrf,(string)($_POST['csrf']??'')))picker_reply(403,['error'=>'Sessao do seletor expirada. Abra a lista novamente.']);
+ session_write_close();
+ $url='http://127.0.0.1:'.$config['port'].'/instance/fetchInstances';
+ if(function_exists('curl_init')){
+  $ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>3,CURLOPT_TIMEOUT=>8,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROXY=>'',CURLOPT_HTTPHEADER=>['apikey: '.$config['api_key']]]);$raw=curl_exec($ch);$status=curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+ }else{
+  $ctx=stream_context_create(['http'=>['method'=>'GET','header'=>'apikey: '.$config['api_key']."\r\n",'timeout'=>8,'follow_location'=>0,'ignore_errors'=>true]]);$raw=@file_get_contents($url,false,$ctx);$status=isset($http_response_header[0])&&preg_match('/^HTTP\/\S+ 200 /',$http_response_header[0])?200:0;
+ }
+ $rows=is_string($raw)?json_decode($raw,true):null;
+ if($status!==200||!is_array($rows))picker_reply(502,['error'=>'Nao foi possivel consultar a Evolution local. Verifique Docker e API.']);
+ $instances=[];
+ foreach($rows as $row){
+  if(!is_array($row)||!isset($row['name'])||!is_string($row['name']))continue;
+  if(($row['integration']??'WHATSAPP-BAILEYS')!=='WHATSAPP-BAILEYS')continue;
+  $state=$row['connectionStatus']??'unknown';
+  if($method==='POST'&&$row['name']===($_POST['name']??'')){
+   if(empty($row['token'])||!is_string($row['token']))picker_reply(409,['error'=>'A API nao disponibilizou a chave desta instancia.']);
+   picker_reply(200,['address'=>$config['address'],'name'=>$row['name'],'token'=>$row['token'],'state'=>$state]);
+  }
+  $instances[]=['name'=>$row['name'],'state'=>$state];
+ }
+ if($method==='POST')picker_reply(404,['error'=>'Instancia nao encontrada. Atualize a lista.']);
+ picker_reply(200,['instances'=>$instances,'csrf'=>$csrf]);
+}
 if(!is_array($config)||!preg_match('/^[a-f0-9]{64}$/',$config['secret']??'')){http_response_code(503);exit('Addon ainda nao configurado. Execute o instalador.');}
 $expiry=(string)(time()+180);$nonce=bin2hex(random_bytes(16));$token=$expiry.'.'.$nonce;
 $token.='.'.hash_hmac('sha256',$token,$config['secret']);

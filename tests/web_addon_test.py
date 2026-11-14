@@ -16,7 +16,7 @@ class WebAddonTests(unittest.TestCase):
     def test_menu_update_is_idempotent_and_leaves_other_addons(self):
         source='OTHER_ADDON();\n';one=w.menu(source,'172.16.30.25:7070');two=w.menu(one,'172.16.30.25:7070')
         self.assertEqual(one,two);self.assertIn(source,one);self.assertEqual(one.count('VPSCLOUD-EVOLUTION-BEGIN'),1)
-        self.assertIn('input[name="wapp_host"]',one);self.assertNotIn('wapp_pass',one)
+        self.assertIn('input[name="wapp_host"]',one);self.assertIn('Ver instâncias do Evolution',one)
     def test_proxy_targets_only_loopback_and_preserves_addon_prefix(self):
         conf=w.apache('7070');self.assertIn('http://127.0.0.1:7070/admin/addons/evolution/app/',conf)
         self.assertIn('ws://127.0.0.1:7070/admin/addons/evolution/app/',conf)

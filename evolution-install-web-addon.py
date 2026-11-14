@@ -32,7 +32,7 @@ def address(info,route):
     return str(ip)+':'+port,port
 
 def menu(source,host):
-    block=(PACKAGE/'native-menu.js').read_text().replace('__EVOLUTION_NATIVE_ADDRESS__',json.dumps(host))
+    block=(PACKAGE/'native-menu.js').read_text(encoding='utf8').replace('__EVOLUTION_NATIVE_ADDRESS__',json.dumps(host))
     pattern=r'/\* VPSCLOUD-EVOLUTION-BEGIN \*/.*?/\* VPSCLOUD-EVOLUTION-END \*/\n?'
     return re.sub(pattern,lambda _:block,source,flags=re.S) if '/* VPSCLOUD-EVOLUTION-BEGIN */' in source else source.rstrip()+'\n'+block
 
@@ -77,7 +77,9 @@ def main():
     secret=saved.get('secret') or secrets.token_hex(32)
     if not re.fullmatch('[a-f0-9]{64}',secret):raise ValueError('Segredo do addon invalido; restaure o backup.')
     if private.exists():shutil.copy2(str(private),str(backup/'bridge-before.json'))
-    private.write_text(json.dumps({'secret':secret,'address':host}));os.chown(str(private),0,gid);os.chmod(str(private),0o640)
+    api_key=next((x.split('=',1)[1] for x in info['Config']['Env'] if x.startswith('AUTHENTICATION_API_KEY=')),'')
+    if not api_key:raise ValueError('Chave da API local nao encontrada.')
+    private.write_text(json.dumps({'secret':secret,'address':host,'port':int(port),'api_key':api_key}));os.chown(str(private),0,gid);os.chmod(str(private),0o640)
     bridge_secret=monitor/'bridge-secret.json';bridge_secret.write_text(json.dumps({'secret':secret}));os.chmod(str(bridge_secret),0o600)
     target.mkdir(parents=True,exist_ok=True)
     os.chown(str(target),0,gid);os.chmod(str(target),0o755)

@@ -14,6 +14,7 @@ PROJECT = Path('/opt/vpscloud-evolution-v2')
 API = 'evolution_v2_api'
 MONITOR = PROJECT / 'monitor'
 RECEIPT = Path('/opt/mk-auth/dados/Recibo_Evolution/settings.json')
+WEB_BRIDGE = Path('/opt/mk-auth/dados/evolution/bridge.json')
 MAINTENANCE = Path('/run/vpscloud-evolution-maintenance')
 
 
@@ -94,6 +95,11 @@ def key_updates(old, new):
         local = target.hostname in ('127.0.0.1','localhost',origin.hostname) and (target.port or 80)==(origin.port or 80)
         if saved.get('token') == old and local:
             saved['token'] = new; updates[receipt] = json.dumps(saved,ensure_ascii=False,indent=2)
+    bridge = WEB_BRIDGE
+    if bridge.is_file():
+        saved = json.loads(bridge.read_text())
+        if saved.get('api_key') == old:
+            saved['api_key'] = new; updates[bridge] = json.dumps(saved)
     return updates
 
 
