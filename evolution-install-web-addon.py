@@ -37,13 +37,11 @@ def menu(source,host):
 def apache(port):
     base='/admin/addons/evolution/app/'
     return '''# Managed by VPSCloud Evolution. Fixed loopback upstream; ticket checked by API hook.
-RewriteEngine On
-RewriteOptions InheritDownBefore
-RewriteCond %{HTTP:Upgrade} =websocket [NC]
-RewriteRule ^/?admin/addons/evolution/app/(.*)$ ws://127.0.0.1:PORT/admin/addons/evolution/app/$1 [P,L]
-<Location "/admin/addons/evolution/app/">
+<Location "/admin/addons/evolution/">
     ProxyPreserveHost On
 </Location>
+ProxyPass "/admin/addons/evolution/ws/" "ws://127.0.0.1:PORTBASE" connectiontimeout=3 timeout=60
+ProxyPassReverse "/admin/addons/evolution/ws/" "ws://127.0.0.1:PORTBASE"
 ProxyPass "BASE" "http://127.0.0.1:PORTBASE" connectiontimeout=3 timeout=60
 ProxyPassReverse "BASE" "http://127.0.0.1:PORTBASE"
 '''.replace('PORT',port).replace('BASE',base)
@@ -87,7 +85,7 @@ def main():
     original=menu_path.read_text();temp=menu_path.with_suffix('.evolution-tmp')
     temp.write_text(menu(original,host));os.chmod(str(temp),menu_path.stat().st_mode&0o777);os.replace(str(temp),str(menu_path))
     try:
-        run('a2enmod','proxy','proxy_http','proxy_wstunnel','rewrite')
+        run('a2enmod','proxy','proxy_http','proxy_wstunnel')
         CONF.write_text(apache(port));os.chmod(str(CONF),0o644)
         run('a2enconf','vpscloud-evolution-addon')
         run('apache2ctl','-t')

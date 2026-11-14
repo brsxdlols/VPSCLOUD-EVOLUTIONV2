@@ -11,7 +11,7 @@ const calls=[];class XHR{open(...args){calls.push(args)}}class WS{constructor(..
 const location={href:'https://mk.test'+b.BASE+'/manager/',host:'mk.test',protocol:'https:'};
 const context={URL,Request,location,XMLHttpRequest:XHR,window:{fetch:(...args)=>{calls.push(args);return Promise.resolve()},WebSocket:WS}};
 vm.runInNewContext(b.browserShim(),context);context.window.fetch('http://172.16.30.25:7070/instance/fetchInstances');new XHR().open('GET','/monitor/api/config');new context.window.WebSocket('ws://mk.test/socket.io/?EIO=4');
-assert.equal(calls[0][0],'https://mk.test'+b.BASE+'/instance/fetchInstances');assert.equal(calls[1][1],'https://mk.test'+b.BASE+'/monitor/api/config');assert.equal(calls[2][0],'wss://mk.test'+b.BASE+'/socket.io/?EIO=4');
+assert.equal(calls[0][0],'https://mk.test'+b.BASE+'/instance/fetchInstances');assert.equal(calls[1][1],'https://mk.test'+b.BASE+'/monitor/api/config');assert.equal(calls[2][0],'wss://mk.test/admin/addons/evolution/ws/socket.io/?EIO=4');
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'bridge-'));fs.writeFileSync(path.join(dir,'bridge-secret.json'),JSON.stringify({secret}));b.install(dir);
 const server=http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({url:req.url,bridge:!!req.__vpscloudBridge}))});
 (async()=>{try{
