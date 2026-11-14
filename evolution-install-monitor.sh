@@ -10,25 +10,25 @@ PROJECT=/opt/vpscloud-evolution-v2
 STAGE=$(mktemp -d "$PROJECT/.monitor-download.XXXXXX")
 trap 'rmdir "$STAGE/assets" "$STAGE" 2>/dev/null || true' EXIT
 mkdir -p "$STAGE/assets"
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/monitor-hook.cjs" -o "$STAGE/monitor-hook.cjs"
-printf '%s  %s\n' 'ffbae7f78182842d2f1c36f3e017f73081f23e154380122e661efa6a0215b9a4' "$STAGE/monitor-hook.cjs" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/monitor.html" -o "$STAGE/monitor.html"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/monitor-hook.cjs" -o "$STAGE/monitor-hook.cjs"
+printf '%s  %s\n' 'b01ada707acc25fe4e7bfe3a544c7b2f4157eb9e48930536cf5ccf8babf6c239' "$STAGE/monitor-hook.cjs" | sha256sum -c - >/dev/null
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/monitor.html" -o "$STAGE/monitor.html"
 printf '%s  %s\n' '188237ee4c58428aadbe5f7c1ca6f01a8c10909cb861a0c096c36edd5a5e647d' "$STAGE/monitor.html" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/evolution-watchdog.py" -o "$STAGE/evolution-watchdog.py"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/evolution-watchdog.py" -o "$STAGE/evolution-watchdog.py"
 printf '%s  %s\n' 'd6b016b5369eb75ff7592a9b56672b2172ca0c71bd127177470bb2570616dce5' "$STAGE/evolution-watchdog.py" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/evolution-enable-monitor.py" -o "$STAGE/evolution-enable-monitor.py"
-printf '%s  %s\n' '278fd80f36f090cd6027a81d81dd8337c7b649b044cc2c13ba4b10b8c43a8a3c' "$STAGE/evolution-enable-monitor.py" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/assets/alerts/critical.png" -o "$STAGE/assets/critical.png"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/evolution-enable-monitor.py" -o "$STAGE/evolution-enable-monitor.py"
+printf '%s  %s\n' '7b7e2dcc7daf55f7d0fbfc1b74b4e775e96760cc647908ef499336e2e812e690' "$STAGE/evolution-enable-monitor.py" | sha256sum -c - >/dev/null
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/assets/alerts/critical.png" -o "$STAGE/assets/critical.png"
 printf '%s  %s\n' '3c8762ae380641167045c53f4c3d7f1c5f4d6881a4d45822af9315e414661942' "$STAGE/assets/critical.png" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/assets/alerts/whatsapp.png" -o "$STAGE/assets/whatsapp.png"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/assets/alerts/whatsapp.png" -o "$STAGE/assets/whatsapp.png"
 printf '%s  %s\n' 'cd0f70546aca263fc800b699d6c711922ecba666766a3f2dbe30b0b236622458' "$STAGE/assets/whatsapp.png" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/assets/alerts/recovery.png" -o "$STAGE/assets/recovery.png"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/assets/alerts/recovery.png" -o "$STAGE/assets/recovery.png"
 printf '%s  %s\n' '20a8fb03853b5f9f2ed8ed6c58e065524ed34ea28f84a8c9cbab9447f79229cf' "$STAGE/assets/recovery.png" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/evolution-log-policy.sh" -o "$STAGE/evolution-log-policy.sh"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/evolution-log-policy.sh" -o "$STAGE/evolution-log-policy.sh"
 printf '%s  %s\n' '7b3888377a98bbd14a0d5b8718c78edba67c27acf9dab165ebbaf96910d8a9d1' "$STAGE/evolution-log-policy.sh" | sha256sum -c - >/dev/null
 MONITOR="$PROJECT/monitor"
-curl -fsSL --retry 3 "BRIDGE_PAYLOAD_URL" -o "$STAGE/mkauth-bridge.cjs"
-printf '%s  %s\n' 'BRIDGE_PAYLOAD_SHA' "$STAGE/mkauth-bridge.cjs" | sha256sum -c - >/dev/null
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/d0f4c3c1ecc553c482b831e5b5d9d0babc81212c/mkauth-bridge.cjs" -o "$STAGE/mkauth-bridge.cjs"
+printf '%s  %s\n' '4a67aeaa695cf576798f6815de1c5345c46283256ea78c0a284a1373b635d82a' "$STAGE/mkauth-bridge.cjs" | sha256sum -c - >/dev/null
 mkdir -p "$MONITOR"
 chmod 700 "$MONITOR"
 for file in monitor-hook.cjs mkauth-bridge.cjs; do
