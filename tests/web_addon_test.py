@@ -19,3 +19,4 @@ class WebAddonTests(unittest.TestCase):
         conf=w.apache('7070');self.assertIn('http://127.0.0.1:7070/admin/addons/evolution/app/',conf)
         self.assertIn('ws://127.0.0.1:7070/admin/addons/evolution/app/',conf)
         self.assertIn('ProxyPreserveHost On',conf)
+        self.assertIn('RewriteOptions InheritDownBefore',conf)

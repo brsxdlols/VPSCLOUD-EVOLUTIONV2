@@ -38,6 +38,7 @@ def apache(port):
     base='/admin/addons/evolution/app/'
     return '''# Managed by VPSCloud Evolution. Fixed loopback upstream; ticket checked by API hook.
 RewriteEngine On
+RewriteOptions InheritDownBefore
 RewriteCond %{HTTP:Upgrade} =websocket [NC]
 RewriteRule ^/?admin/addons/evolution/app/(.*)$ ws://127.0.0.1:PORT/admin/addons/evolution/app/$1 [P,L]
 <Location "/admin/addons/evolution/app/">
