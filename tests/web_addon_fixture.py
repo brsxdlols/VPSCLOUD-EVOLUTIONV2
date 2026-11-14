@@ -42,7 +42,7 @@ def main():
                 run('php','-r',"$d=new mysqli('127.0.0.1','root','ci-db-only','mkradius',3307);if($d->connect_errno)exit(1);");break
             except subprocess.CalledProcessError:time.sleep(1)
         else:raise ValueError('Disposable native-auth database did not start.')
-        run('php','-r',"$d=new mysqli('127.0.0.1','root','ci-db-only','mkradius',3307);$d->query('CREATE TABLE sis_acesso(login VARCHAR(255) PRIMARY KEY,sha VARCHAR(255),ativo VARCHAR(3))');$s=$d->prepare('INSERT INTO sis_acesso VALUES(?,?,?)');$u='ci-admin';$h=password_hash('ci-native-password',PASSWORD_BCRYPT);$a='sim';$s->bind_param('sss',$u,$h,$a);$s->execute();")
+        run('php','-r',"$d=new mysqli('127.0.0.1','root','ci-db-only','mkradius',3307);$d->query('CREATE TABLE sis_acesso(login VARCHAR(255) PRIMARY KEY,sha VARCHAR(255),ativo VARCHAR(3))');$s=$d->prepare('INSERT INTO sis_acesso VALUES(?,?,?)');$u='ci-admin';$h=password_hash(hash('sha256','ci-native-password'),PASSWORD_BCRYPT);$a='sim';$s->bind_param('sss',$u,$h,$a);$s->execute();")
         run('docker','run','-d','--name',name,'--network','bridge','-p','127.0.0.1:7070:8080','-v',str(folder)+':/bridge','-e','NODE_PATH=/evolution/node_modules','-e','AUTHENTICATION_API_KEY=ci-only-global-key','--entrypoint','node','evoapicloud/evolution-api@sha256:1bd8afc4a6cf48822e6cf02469aeae7bd35a12a6b616eacd1291926307f4d339','-r','/bridge/monitor-hook.cjs','-e',fake)
         time.sleep(3)
         actual_run=w.run

@@ -3,8 +3,10 @@ require __DIR__.'/../addon/evolution/reauth.php';
 function check($value,$message){if(!$value)throw new RuntimeException($message);}
 $dir=sys_get_temp_dir().'/evolution-reauth-'.bin2hex(random_bytes(8));mkdir($dir,0700);
 try{
- $hash=password_hash('correct-password',PASSWORD_BCRYPT);$users=['current'=>['sha'=>$hash,'ativo'=>'sim'],'disabled'=>['sha'=>$hash,'ativo'=>'nao']];
+ $hash=password_hash(hash('sha256','correct-password'),PASSWORD_BCRYPT);$users=['current'=>['sha'=>$hash,'ativo'=>'sim'],'disabled'=>['sha'=>$hash,'ativo'=>'nao']];
  $lookup=function($login)use($users){return $users[$login]??null;};
+ file_put_contents($dir.'/'.hash('sha256','current').'.json',json_encode(['until'=>9999,'attempts'=>5]));
+ check(evolution_reauth('current','correct-password',$dir,$lookup,99),'Old faulty-verifier attempts were not reset');
  check(!evolution_reauth('current','wrong',$dir,$lookup,100),'Wrong password accepted');
  check(evolution_reauth('current','correct-password',$dir,$lookup,101),'Correct password rejected');
  check(!evolution_reauth('disabled','correct-password',$dir,$lookup,101),'Disabled user accepted');

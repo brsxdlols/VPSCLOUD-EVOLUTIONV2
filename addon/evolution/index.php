@@ -9,7 +9,7 @@ ob_start();
 include __DIR__.'/addons.class.php';
 ob_end_clean();
 if($picker)define('EVOLUTION_PICKER_READY',true);
-function picker_reply($code,$body){http_response_code($code);echo json_encode($body,JSON_UNESCAPED_UNICODE);exit;}
+function picker_reply($code,$body){header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');http_response_code($code);echo json_encode($body,JSON_UNESCAPED_UNICODE);exit;}
 if($picker && (session_status()!==PHP_SESSION_ACTIVE || (empty($_SESSION['mka_logado']) && empty($_SESSION['MKA_Logado']))))picker_reply(401,['error'=>'Entre novamente pelo MK-AUTH.']);
 if(session_status()!==PHP_SESSION_ACTIVE || (empty($_SESSION['mka_logado']) && empty($_SESSION['MKA_Logado']))){http_response_code(401);exit('Entre pelo MK-AUTH para acessar a Evolution.');}
 $config=json_decode(@file_get_contents('/opt/mk-auth/dados/evolution/bridge.json'),true);
@@ -79,27 +79,40 @@ header('Cache-Control: no-store');header('X-Frame-Options: SAMEORIGIN');
 if(isset($_GET['refresh'])){header('Content-Type: application/json');echo '{"ok":true}';exit;}
 $view=($_GET['view']??'')==='monitor'?'monitor/':'manager/';
 session_write_close();
-?><!doctype html><html lang="pt-BR" class="has-navbar-fixed-top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Evolution · MK-AUTH</title><link rel="stylesheet" href="../../estilos/mk-auth.css"><script src="../../scripts/jquery.js"></script><script src="../../scripts/mk-auth.js"></script><style>.evolution-addon{padding:22px 16px}nav.evolution-tabs{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:12px 0}.evolution-tabs a,.evolution-tabs button{padding:10px 16px;background:#168664;color:white;border-radius:6px;text-decoration:none}.evolution-addon iframe{width:100%;height:calc(100vh - 230px);min-height:600px;border:0;border-radius:8px;background:#08120f}.evolution-addon p{margin:8px 0;color:#395469}#session-error{color:#a42c28;font-weight:bold}</style></head><body>
+?><!doctype html><html lang="pt-BR" class="has-navbar-fixed-top"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Evolution · MK-AUTH</title><link rel="stylesheet" href="../../estilos/mk-auth.css"><script src="../../scripts/jquery.js"></script><script src="../../scripts/mk-auth.js"></script><style>
+.evolution-addon{padding:22px 16px}.evolution-addon h1{font-size:22px;font-weight:600;margin:0 0 14px}
+nav.evolution-tabs{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.evolution-tabs>a,.evolution-tabs>button,.evolution-dialog button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:40px;margin:0;padding:10px 16px;border:1px solid #12815f;border-radius:6px;background:#12815f;color:#fff;text-decoration:none;font:600 14px/20px Arial,sans-serif;cursor:pointer;appearance:none;box-shadow:none}
+.evolution-tabs>a:hover,.evolution-tabs>button:hover,.evolution-dialog button:hover{background:#0c694d;color:#fff}
+.evolution-tabs>:focus-visible,.evolution-dialog button:focus-visible{outline:3px solid #78c7b0;outline-offset:2px}
+.evolution-dialog button:disabled{opacity:.6;cursor:wait}
+.evolution-addon iframe{width:100%;height:calc(100vh - 230px);min-height:600px;border:0;border-radius:8px;background:#08120f}.evolution-addon p{margin:8px 0;color:#395469}#session-error{color:#a42c28;font-weight:bold}
+.evolution-dialog{box-sizing:border-box;width:480px;max-width:calc(100vw - 32px);padding:24px;border:1px solid #c4d4df;border-radius:12px;background:#fff;color:#183347;font:14px/1.5 Arial,sans-serif;box-shadow:0 16px 48px #10283b33}
+.evolution-dialog::backdrop{background:#10283b66}.evolution-dialog h2{font-size:20px;font-weight:700;line-height:1.3;margin:0 0 12px}.evolution-dialog p{margin:0 0 20px}.evolution-dialog form{margin:0}.evolution-dialog label{font-size:14px;font-weight:600}.evolution-dialog input{box-sizing:border-box;display:block;width:100%;height:44px;margin:8px 0 0;padding:10px 12px;border:1px solid #aabfce;border-radius:6px;background:#fff;color:#183347;font:16px/22px Arial,sans-serif}.evolution-dialog input:focus{outline:2px solid #55b99c;outline-offset:1px}.evolution-dialog input[readonly]{font:14px/22px monospace;background:#f2f7f5}.evolution-dialog [hidden]{display:none!important}.evolution-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:22px}.evolution-dialog button.evolution-secondary{background:#fff;color:#294b60;border-color:#b7cad7}.evolution-dialog button.evolution-secondary:hover{background:#edf4f7}.evolution-key-result button{margin-top:12px}
+@media(max-width:520px){.evolution-tabs>a,.evolution-tabs>button{flex:1 1 190px}.evolution-dialog{padding:20px}.evolution-actions button{flex:1 1 100%}}
+</style></head><body>
 <?php include '../../topo.php';include '../../menu.php'; ?>
 <main class="evolution-addon"><h1>Evolution API</h1><nav class="evolution-tabs"><a href="?view=manager">Manager</a><a href="?view=monitor">Alertas Telegram</a><a href="../../conf_zap_serv.hhvm?vpscloud_evolution=1">Configurar servidor WhatsApp</a><button type="button" id="show-global-key">Ver chave global</button></nav><p>Use a API Key Global para entrar no Manager e no monitor. O acesso usa o mesmo endereco web do MK-AUTH.</p><p id="session-error" role="alert"></p><iframe title="Evolution" src="app/<?php echo $view; ?>" referrerpolicy="same-origin"></iframe></main>
 <script>setInterval(async()=>{try{const r=await fetch('index.php?refresh=1',{credentials:'same-origin',cache:'no-store'});const o=await r.json();if(!r.ok||!o.ok)throw Error();}catch{document.getElementById('session-error').textContent='Sessao expirada. Entre novamente pelo MK-AUTH e reabra o addon.';}},90000);</script>
 <script>
 document.getElementById('show-global-key').onclick=async function(){
- const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Ver chave global');dialog.style.cssText='width:min(480px,90vw);padding:24px;border:1px solid #bdd3df;border-radius:10px';
+ if(document.querySelector('.evolution-dialog'))return;
+ const dialog=document.createElement('dialog');dialog.className='evolution-dialog';dialog.setAttribute('aria-label','Ver chave global');
  const title=document.createElement('h2');title.textContent='Ver chave global';
  const message=document.createElement('p');message.setAttribute('role','status');message.textContent='Confirmando sua sessão…';
- const form=document.createElement('form');const label=document.createElement('label');label.textContent='Sua senha do MK-AUTH';
- const password=document.createElement('input');password.type='password';password.autocomplete='current-password';password.required=true;password.style.cssText='display:block;width:100%;margin:10px 0;padding:10px';label.append(password);
- const submit=document.createElement('button');submit.type='submit';submit.disabled=true;submit.textContent='Confirmar senha e mostrar';submit.style.padding='10px';form.onsubmit=event=>event.preventDefault();
- const result=document.createElement('div');const key=document.createElement('input');key.readOnly=true;key.setAttribute('aria-label','Chave global');key.style.cssText='width:100%;padding:10px;margin:10px 0';
+ const form=document.createElement('form');form.id='evolution-key-form';const label=document.createElement('label');label.textContent='Sua senha do MK-AUTH';
+ const password=document.createElement('input');password.type='password';password.autocomplete='current-password';password.required=true;label.append(password);
+ const submit=document.createElement('button');submit.type='submit';submit.setAttribute('form',form.id);submit.disabled=true;submit.textContent='Confirmar e mostrar';form.onsubmit=event=>event.preventDefault();
+ const result=document.createElement('div');result.className='evolution-key-result';const key=document.createElement('input');key.readOnly=true;key.setAttribute('aria-label','Chave global');
  const copy=document.createElement('button');copy.type='button';copy.textContent='Copiar chave';copy.onclick=async()=>{try{await navigator.clipboard.writeText(key.value);message.textContent='Chave copiada. Ela será ocultada ao completar 30 segundos.';}catch{key.select();message.textContent='Selecione a chave e copie com Ctrl+C.';}};
- result.append(key,copy);result.hidden=true;const close=document.createElement('button');close.type='button';close.textContent='Fechar';close.style.margin='12px';close.onclick=()=>dialog.close();
- let timer,csrf='';dialog.onclose=()=>{clearTimeout(timer);password.value='';key.value='';dialog.remove();};form.append(label,submit);dialog.append(title,message,form,result,close);document.body.append(dialog);dialog.showModal();password.focus();
+ result.append(key,copy);result.hidden=true;const close=document.createElement('button');close.type='button';close.textContent='Cancelar';close.className='evolution-secondary';close.onclick=()=>dialog.close();
+ const actions=document.createElement('div');actions.className='evolution-actions';actions.append(close,submit);
+ let timer,csrf='';dialog.onclose=()=>{clearTimeout(timer);password.value='';key.value='';dialog.remove();};form.append(label);dialog.append(title,message,form,result,actions);document.body.append(dialog);dialog.showModal();password.focus();
  const endpoint='index.php?globalkey=1';
  async function request(options){const r=await fetch(endpoint,{credentials:'same-origin',cache:'no-store',...options});let body;try{body=await r.json();}catch{throw Error('Entre novamente pelo MK-AUTH e reabra o addon.');}if(!r.ok)throw Error(body.error||'Falha ao confirmar a senha.');return body;}
  try{const body=await request();csrf=body.csrf;submit.disabled=false;if(dialog.isConnected)message.textContent='Confirme a senha de '+body.user+'. A chave ficará visível por 30 segundos.';}catch(error){message.textContent=error.message;submit.disabled=true;}
  form.onsubmit=async event=>{event.preventDefault();if(!csrf)return;submit.disabled=true;message.textContent='Validando senha…';
-  try{const body=await request({method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,password:password.value})});password.value='';if(!dialog.isConnected)return;key.value=body.key;form.hidden=true;result.hidden=false;message.textContent='Chave global. Será ocultada em 30 segundos.';timer=setTimeout(()=>dialog.close(),30000);}
+  try{const body=await request({method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,password:password.value})});password.value='';if(!dialog.isConnected)return;key.value=body.key;form.hidden=true;submit.hidden=true;close.textContent='Fechar';result.hidden=false;message.textContent='Chave global. Será ocultada em 30 segundos.';timer=setTimeout(()=>dialog.close(),30000);}
   catch(error){password.value='';message.textContent=error.message;submit.disabled=false;password.focus();}
  };
 };
