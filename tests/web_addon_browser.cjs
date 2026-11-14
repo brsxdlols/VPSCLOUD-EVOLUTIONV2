@@ -1,7 +1,9 @@
 const {chromium}=require('/tmp/evolution-browser-check/node_modules/playwright');
 const assert=require('assert/strict');
-(async()=>{const browser=await chromium.launch({headless:true});try{
- const page=await browser.newPage();
+(async()=>{const browser=await chromium.launch({headless:true});let page;try{
+ page=await browser.newPage();
+ page.on('pageerror',e=>console.log('Browser error:',e.message));
+ page.on('requestfailed',r=>console.log('Request failed:',r.url(),r.failure()?.errorText));
  let r=await page.goto('http://127.0.0.1/admin/addons/evolution/');assert.equal(r.status(),401);
  r=await page.goto('http://127.0.0.1/admin/addons/evolution/app/manager/');assert.equal(r.status(),401);
  await page.goto('http://127.0.0.1/admin/addons/evolution/login-fixture.php');
@@ -17,4 +19,4 @@ const assert=require('assert/strict');
  await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?existing=1');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'192.168.99.10:8080');
  await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?existing=1&vpscloud_evolution=1');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'172.16.30.25:7070');
  console.log('PASS real browser: native login, original Manager, local API routing, WebSocket, monitor and native address autofill');
-}catch(e){console.error(e);process.exitCode=1}finally{await browser.close()}})();
+}catch(e){console.error(e);if(page)for(const f of page.frames()){try{console.log('Frame',f.url(),(await f.locator('body').innerText({timeout:2000})).slice(0,6000))}catch{}}process.exitCode=1}finally{await browser.close()}})();

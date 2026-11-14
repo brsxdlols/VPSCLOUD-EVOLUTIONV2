@@ -79,6 +79,7 @@ def main():
     private.write_text(json.dumps({'secret':secret,'address':host}));os.chown(str(private),0,gid);os.chmod(str(private),0o640)
     bridge_secret=monitor/'bridge-secret.json';bridge_secret.write_text(json.dumps({'secret':secret}));os.chmod(str(bridge_secret),0o600)
     target.mkdir(parents=True,exist_ok=True)
+    os.chown(str(target),0,gid);os.chmod(str(target),0o755)
     shutil.copyfile(str(PACKAGE/'index.php'),str(target/'index.php'));os.chmod(str(target/'index.php'),0o644)
     link=target/'addons.class.php'
     if not link.exists():link.symlink_to(ROOT/'include/addons.inc.hhvm')
