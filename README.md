@@ -134,3 +134,5 @@ Instalações novas do addon começam desativadas. Há um único switch destacad
 O auxiliar do monitor preserva explicitamente Entrypoint, Cmd e diretório de trabalho da API existente, além da imagem por ID, portas e mounts. Assim, instalações antigas com início direto por Node ou wrapper de shell podem receber o monitor sem trocar o comando de execução ou a versão da API.
 
 Na configuração nativa **Opções → WhatsApp → Servidor**, o botão **Ver instâncias do Evolution** consulta a API local e mostra o estado de conexão WhatsApp. **Usar esta instância** preenche servidor, nome e chave individual; clique em **Gravar** para salvar. A consulta exige a sessão do MK-AUTH; a lista não expõe chaves. Selecionar não conecta, desconecta nem envia mensagens.
+
+No addon Evolution, **Ver chave global** exige novamente a senha do usuario conectado ao MK-AUTH. Usa `password_verify` sobre o cadastro nativo de usuario ativo, sem armazenar a senha, e limita a cinco tentativas por usuario a cada 15 minutos. A chave aparece por 30 segundos. Versoes sem a conexao nativa esperada bloqueiam a consulta em vez de dispensar a senha.

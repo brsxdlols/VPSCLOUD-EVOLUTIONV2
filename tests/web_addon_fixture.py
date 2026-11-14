@@ -21,7 +21,8 @@ def main():
     secret='ab'*32;(data/'bridge.json').write_text(json.dumps({'secret':secret}));os.chmod(str(data/'bridge.json'),0o644)
     shutil.copyfile(str(ROOT/'addon/evolution/index.php'),str(target/'index.php'))
     (target/'addons.class.php').write_text("<?php session_name('ci_native_session');session_start();")
-    (target/'login-fixture.php').write_text("<?php session_name('ci_native_session');session_start();$_SESSION['MKA_Logado']=1;header('Location: /admin/addons/evolution/');")
+    (target/'login-fixture.php').write_text("<?php session_name('ci_native_session');session_start();$_SESSION['MKA_Logado']=1;$_SESSION['MKA_Usuario']='ci-admin';header('Location: /admin/addons/evolution/');")
+    (target.parents[1]/'config.php').write_text("<?php $conn=new mysqli('127.0.0.1','root','ci-db-only','mkradius',3307);")
     for name in ['topo.php','menu.php','baixo.php']:(target.parents[1]/name).write_text('')
     for name in ['estilos/mk-auth.css','scripts/jquery.js','scripts/mk-auth.js']:
         file=target.parents[1]/name;file.parent.mkdir(exist_ok=True);file.write_text('')
@@ -33,7 +34,15 @@ def main():
     run('a2enmod','proxy','proxy_http','proxy_wstunnel','rewrite');conf=Path('/etc/apache2/conf-available/vpscloud-evolution-addon.conf');conf.write_text(w.apache('7070'));run('a2enconf','vpscloud-evolution-addon');run('apache2ctl','-t');run('service','apache2','restart')
     fake="""const e=require('express'),c=require('crypto'),a=e();a.use(e.json());a.get('/',(r,s)=>s.json({version:'2.3.7'}));a.get('/instance/fetchInstances',(r,s)=>{if(r.headers.apikey!=='ci-only-global-key')return s.status(401).end();s.json([{id:'ci-fixture',name:'CI_ONLY_NO_PHONE',integration:'WHATSAPP-BAILEYS',connectionStatus:'close',token:'ci-instance-token',_count:{Message:0,Contact:0,Chat:0}}])});a.use((r,s)=>s.json({}));const server=a.listen(8080,'0.0.0.0');server.on('upgrade',(r,s)=>{if(!r.__vpscloudBridge||!r.url.startsWith('/socket.io/'))return s.destroy();const accept=c.createHash('sha1').update(r.headers['sec-websocket-key']+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');s.write('HTTP/1.1 101 Switching Protocols\\r\\nUpgrade: websocket\\r\\nConnection: Upgrade\\r\\nSec-WebSocket-Accept: '+accept+'\\r\\n\\r\\n');s.on('data',()=>s.destroy())})"""
     name='evolution_v2_api'
+    db_name='evolution_ci_native_auth'
     try:
+        run('docker','run','-d','--name',db_name,'-p','127.0.0.1:3307:3306','-e','MARIADB_ROOT_PASSWORD=ci-db-only','-e','MARIADB_DATABASE=mkradius','mariadb:10.11')
+        for attempt in range(60):
+            try:
+                run('php','-r',"$d=new mysqli('127.0.0.1','root','ci-db-only','mkradius',3307);if($d->connect_errno)exit(1);");break
+            except subprocess.CalledProcessError:time.sleep(1)
+        else:raise ValueError('Disposable native-auth database did not start.')
+        run('php','-r',"$d=new mysqli('127.0.0.1','root','ci-db-only','mkradius',3307);$d->query('CREATE TABLE sis_acesso(login VARCHAR(255) PRIMARY KEY,sha VARCHAR(255),ativo VARCHAR(3))');$s=$d->prepare('INSERT INTO sis_acesso VALUES(?,?,?)');$u='ci-admin';$h=password_hash('ci-native-password',PASSWORD_BCRYPT);$a='sim';$s->bind_param('sss',$u,$h,$a);$s->execute();")
         run('docker','run','-d','--name',name,'--network','bridge','-p','127.0.0.1:7070:8080','-v',str(folder)+':/bridge','-e','NODE_PATH=/evolution/node_modules','-e','AUTHENTICATION_API_KEY=ci-only-global-key','--entrypoint','node','evoapicloud/evolution-api@sha256:1bd8afc4a6cf48822e6cf02469aeae7bd35a12a6b616eacd1291926307f4d339','-r','/bridge/monitor-hook.cjs','-e',fake)
         time.sleep(3)
         actual_run=w.run
@@ -57,5 +66,7 @@ def main():
         raise
     finally:
         try:run('docker','rm','-f',name)
+        except Exception:pass
+        try:run('docker','rm','-f',db_name)
         except Exception:pass
 if __name__=='__main__':main()

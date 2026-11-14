@@ -57,6 +57,7 @@ def main():
     if not Path('/etc/apache2/apache2.conf').is_file() or not shutil.which('apache2ctl') or not shutil.which('a2enconf'):raise ValueError('Proxy automatico requer Apache2. Configure o proxy equivalente no servidor web utilizado.')
     if not (monitor/'mkauth-bridge.cjs').is_file():raise ValueError('Instale primeiro os auxiliares atualizados do monitor.')
     run('php','-l',str(PACKAGE/'index.php'))
+    run('php','-l',str(PACKAGE/'reauth.php'))
     info=json.loads(run('docker','inspect','evolution_v2_api'))[0]
     host,port=address(info,json.loads(run('ip','-j','route','get','1.1.1.1')))
     try:
@@ -80,10 +81,12 @@ def main():
     api_key=next((x.split('=',1)[1] for x in info['Config']['Env'] if x.startswith('AUTHENTICATION_API_KEY=')),'')
     if not api_key:raise ValueError('Chave da API local nao encontrada.')
     private.write_text(json.dumps({'secret':secret,'address':host,'port':int(port),'api_key':api_key}));os.chown(str(private),0,gid);os.chmod(str(private),0o640)
+    rate=data/'reauth';rate.mkdir(exist_ok=True);os.chown(str(rate),0,gid);os.chmod(str(rate),0o2770)
     bridge_secret=monitor/'bridge-secret.json';bridge_secret.write_text(json.dumps({'secret':secret}));os.chmod(str(bridge_secret),0o600)
     target.mkdir(parents=True,exist_ok=True)
     os.chown(str(target),0,gid);os.chmod(str(target),0o755)
     shutil.copyfile(str(PACKAGE/'index.php'),str(target/'index.php'));os.chmod(str(target/'index.php'),0o644)
+    shutil.copyfile(str(PACKAGE/'reauth.php'),str(target/'reauth.php'));os.chmod(str(target/'reauth.php'),0o644)
     link=target/'addons.class.php'
     if not link.exists():link.symlink_to(ROOT/'include/addons.inc.hhvm')
     original=menu_path.read_text();temp=menu_path.with_suffix('.evolution-tmp')

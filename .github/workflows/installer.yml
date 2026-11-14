@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: sudo apt-get update -qq && sudo apt-get install -y apache2 libapache2-mod-php
+      - run: sudo apt-get update -qq && sudo apt-get install -y apache2 libapache2-mod-php php-mysql
       - run: npm install --prefix /tmp/evolution-browser-check playwright@1.56.1
       - run: /tmp/evolution-browser-check/node_modules/.bin/playwright install --with-deps chromium
       - run: sudo -E env VPSCLOUD_CI_WEB_TEST=1 python3 tests/web_addon_fixture.py
@@ -33,6 +33,7 @@ jobs:
         with:
           node-version: '22'
       - run: php addon/tests.php
+      - run: php tests/reauth_test.php
       - run: find addon -name "*.php" -exec php -l {} \;
       - run: node tests/installer.test.cjs
       - run: node tests/monitor-ui.test.cjs
