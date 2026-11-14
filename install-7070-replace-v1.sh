@@ -463,6 +463,18 @@ patch_existing_v2() {
   echo "V2 atualizada e pareamentos encerrados. Conecte novamente pelo QR Code."
   exit 0
 }
+# WEB-ADDON-MODE-BEGIN
+if [ "${EVOLUTION_MODE:-apply}" = web-addon ]; then
+  [ -d /opt/mk-auth/admin ] || { echo 'ERRO: MK-AUTH nao encontrado.'; exit 1; }
+  [ "$(docker inspect --format '{{.State.Running}}' "$API_CONTAINER")" = true ] || { echo 'ERRO: API precisa estar ativa para instalar o addon.'; exit 1; }
+  [ "$(docker exec "$API_CONTAINER" node -p "require('/evolution/package.json').version")" = 2.3.7 ] || { echo 'ERRO: atualize primeiro a API para 2.3.7 com o modo normal.'; exit 1; }
+  install_session_helpers
+  /usr/local/sbin/evolution-install-monitor
+  /usr/local/sbin/evolution-install-web-addon
+  echo 'Addon web instalado. Pareamentos preservados; nenhum logout solicitado.'
+  exit 0
+fi
+# WEB-ADDON-MODE-END
 # Instalacao nova/migracao V1; se V2 ja existir, aplica somente patches seguros.
 if docker container inspect "$API_CONTAINER" >/dev/null 2>&1; then patch_existing_v2; fi
 for existing in "$PG_CONTAINER" "$REDIS_CONTAINER"; do
