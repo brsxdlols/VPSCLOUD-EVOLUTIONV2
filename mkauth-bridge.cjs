@@ -1,6 +1,7 @@
 'use strict';
 const fs=require('fs'),path=require('path'),crypto=require('crypto'),http=require('http');
 const BASE='/admin/addons/evolution/app',COOKIE='vpscloud_evolution_bridge';
+function forwardedHost(req){const host=String(req.headers['x-forwarded-host']||'').split(',').pop().trim();return /^[a-zA-Z0-9.:[\]-]+$/.test(host)?host:''}
 function valid(req,secret,now=Date.now()){
  if(!/^[a-f0-9]{64}$/.test(secret||''))return false;
  const item=String(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith(COOKIE+'='));
@@ -10,7 +11,7 @@ function valid(req,secret,now=Date.now()){
  const expiry=Number(parts[0]);if(expiry<Math.floor(now/1000)||expiry>Math.floor(now/1000)+240)return false;
  const expected=crypto.createHmac('sha256',secret).update(parts[0]+'.'+parts[1]).digest('hex');
  if(!crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(parts[2])))return false;
- if(req.headers.origin){try{if(new URL(req.headers.origin).host!==req.headers.host)return false}catch{return false}}
+ if(req.headers.origin){try{if(![req.headers.host,forwardedHost(req)].includes(new URL(req.headers.origin).host))return false}catch{return false}}
  return expiry;
 }
 function browserShim(){
@@ -36,6 +37,7 @@ function install(dir){
    const req=args[0];let secret='';try{secret=JSON.parse(fs.readFileSync(path.join(dir,'bridge-secret.json'),'utf8')).secret}catch{}
    const expiry=valid(req,secret);
    if(!expiry){if(event==='request'){args[1].writeHead(401,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});args[1].end('Entre novamente pelo addon Evolution no MK-AUTH.')}else args[1].destroy();return true}
+   if(forwardedHost(req))req.headers.host=forwardedHost(req);
    req.__vpscloudBridge=true;req.url=req.url.slice(BASE.length)||'/';
    if(event==='upgrade'){const timer=setTimeout(()=>args[1].destroy(),Math.max(1,expiry*1000-Date.now()));timer.unref();args[1].once('close',()=>clearTimeout(timer))}
   }

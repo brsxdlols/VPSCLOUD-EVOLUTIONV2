@@ -4,6 +4,7 @@ const b=require('../mkauth-bridge.cjs'),secret='ab'.repeat(32),now=Math.floor(Da
 function ticket(expiry=now+180){const s=expiry+'.'+'12'.repeat(16);return s+'.'+crypto.createHmac('sha256',secret).update(s).digest('hex')}
 function request(token,origin){return {headers:{cookie:b.COOKIE+'='+token,host:'mk.test',...(origin?{origin}:{})}}}
 assert.ok(b.valid(request(ticket()),secret));assert.equal(b.valid(request(ticket(now-1)),secret),false);assert.equal(b.valid(request(ticket(now+999)),secret),false);assert.equal(b.valid(request(ticket()+'a'),secret),false);assert.equal(b.valid(request(ticket(),'https://other.test'),secret),false);assert.equal(b.valid(request(ticket()),''),false);
+const forwarded=request(ticket(),'https://mk.test');forwarded.headers.host='127.0.0.1:7070';forwarded.headers['x-forwarded-host']='mk.test';assert.ok(b.valid(forwarded,secret));
 const html=b.transform('<html><head></head><script src="/manager/assets/app.js"></script></html>','html');assert.ok(html.includes(b.BASE+'/manager/assets/app.js'));assert.ok(html.includes('<base href="'+b.BASE+'/manager/">'));
 assert.ok(b.transform('<head></head><script src="/assets/main.js"></script>','html').includes(b.BASE+'/manager/assets/main.js'));
 const calls=[];class XHR{open(...args){calls.push(args)}}class WS{constructor(...args){calls.push(args)}}

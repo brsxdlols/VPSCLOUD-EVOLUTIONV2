@@ -47,6 +47,9 @@ def main():
         if isinstance(error,subprocess.CalledProcessError):print(error.output)
         try:print(run('docker','logs','--tail','80',name))
         except Exception:pass
+        for file in ['/var/log/apache2/error.log','/var/log/apache2/access.log']:
+            try:print(Path(file).read_text()[-6000:])
+            except Exception:pass
         raise
     finally:
         try:run('docker','rm','-f',name)

@@ -4,6 +4,7 @@ const assert=require('assert/strict');
  page=await browser.newPage();
  page.on('pageerror',e=>console.log('Browser error:',e.message));
  page.on('requestfailed',r=>console.log('Request failed:',r.url(),r.failure()?.errorText));
+ page.on('websocket',s=>s.on('socketerror',e=>console.log('WebSocket error:',s.url(),e)));
  let r=await page.goto('http://127.0.0.1/admin/addons/evolution/');assert.equal(r.status(),401);
  r=await page.goto('http://127.0.0.1/admin/addons/evolution/app/manager/');assert.equal(r.status(),401);
  await page.goto('http://127.0.0.1/admin/addons/evolution/login-fixture.php');
