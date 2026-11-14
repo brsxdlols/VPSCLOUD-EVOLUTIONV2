@@ -11,6 +11,8 @@ class WebAddonTests(unittest.TestCase):
         info={'HostConfig':{'PortBindings':{'8080/tcp':[{'HostIp':'0.0.0.0','HostPort':'7070'}]}}}
         self.assertEqual(w.address(info,[{'prefsrc':'172.16.30.25'}]),('172.16.30.25:7070','7070'))
         with self.assertRaises(ValueError):w.address(info,[{'prefsrc':'127.0.0.1'}])
+        info['HostConfig']['PortBindings']['8080/tcp'][0]['HostIp']='127.0.0.1'
+        self.assertEqual(w.address(info,[]),('127.0.0.1:7070','7070'))
     def test_menu_update_is_idempotent_and_leaves_other_addons(self):
         source='OTHER_ADDON();\n';one=w.menu(source,'172.16.30.25:7070');two=w.menu(one,'172.16.30.25:7070')
         self.assertEqual(one,two);self.assertIn(source,one);self.assertEqual(one.count('VPSCLOUD-EVOLUTION-BEGIN'),1)

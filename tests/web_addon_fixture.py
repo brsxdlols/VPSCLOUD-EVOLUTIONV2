@@ -23,6 +23,8 @@ def main():
     (target/'addons.class.php').write_text("<?php session_name('ci_native_session');session_start();")
     (target/'login-fixture.php').write_text("<?php session_name('ci_native_session');session_start();$_SESSION['MKA_Logado']=1;header('Location: /admin/addons/evolution/');")
     for name in ['topo.php','menu.php','baixo.php']:(target.parents[1]/name).write_text('')
+    for name in ['estilos/mk-auth.css','scripts/jquery.js','scripts/mk-auth.js']:
+        file=target.parents[1]/name;file.parent.mkdir(exist_ok=True);file.write_text('')
     script=w.menu('', '172.16.30.25:7070');(target.parent/'addon.js').write_text(script)
     (target.parents[1]/'conf_zap_serv.hhvm').write_text('''<!doctype html><input name="wapp_host"><input name="wapp_login" value="KEEP_INSTANCE"><input name="wapp_pass" type="password" value="KEEP_TOKEN"><select name="wapp_servidor"><option value="">Outro</option><option value="evolution2_api">Evolution2 API</option></select><script>if(location.search.includes('existing=1'))document.querySelector('[name=wapp_host]').value='192.168.99.10:8080';</script><script src="/admin/addons/addon.js"></script>''')
     folder=Path('/opt/vpscloud-evolution-v2/monitor');folder.mkdir(parents=True);os.chmod(str(folder),0o755)
@@ -37,6 +39,8 @@ def main():
         actual_run=w.run
         def fixture_run(*args):
             if args[:3]==('ip','-j','route'):return '[{"prefsrc":"172.16.30.25"}]'
+            if args==('docker','inspect','evolution_v2_api'):
+                info=json.loads(actual_run(*args));info[0]['HostConfig']['PortBindings']['8080/tcp'][0]['HostIp']='0.0.0.0';return json.dumps(info)
             return actual_run(*args)
         with patch.object(w,'run',side_effect=fixture_run):w.main()
         assert target.stat().st_mode&0o777==0o755

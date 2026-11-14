@@ -22,8 +22,10 @@ def run(*args):
     return subprocess.check_output(list(args),stderr=subprocess.DEVNULL,universal_newlines=True).strip()
 
 def address(info,route):
-    port=next((x['HostPort'] for x in (info['HostConfig'].get('PortBindings') or {}).get('8080/tcp',[]) if x.get('HostIp','0.0.0.0') in ('','0.0.0.0','127.0.0.1')),None)
+    binding=next((x for x in (info['HostConfig'].get('PortBindings') or {}).get('8080/tcp',[]) if x.get('HostIp','0.0.0.0') in ('','0.0.0.0','127.0.0.1')),{})
+    port=binding.get('HostPort')
     if not port or not port.isdigit() or not 1<=int(port)<=65535:raise ValueError('Porta local da API nao reconhecida.')
+    if binding.get('HostIp')=='127.0.0.1':return '127.0.0.1:'+port,port
     source=next((x.get('prefsrc') or x.get('src') for x in route if x.get('prefsrc') or x.get('src')),None)
     ip=ipaddress.ip_address(source or '')
     if ip.version!=4 or ip.is_loopback or ip.is_unspecified or ip.is_multicast:raise ValueError('IP IPv4 do servidor nao identificado.')

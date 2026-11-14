@@ -25,9 +25,10 @@ function browserShim(){
 }
 function transform(body,type){
  let text=String(body).replace(/(["'`(])\/assets\//g,'$1/manager/assets/').split('/manager').join(BASE+'/manager');
- if(type==='html')text=text.replace(/<head[^>]*>/i,m=>m+'<base href="'+BASE+'/manager/"><script>'+browserShim()+'</script>');
+ if(type==='html')text=inject(text,'<base href="'+BASE+'/manager/"><script>'+browserShim()+'</script>');
  return text;
 }
+function inject(text,html){if(/<head[^>]*>/i.test(text))return text.replace(/<head[^>]*>/i,m=>m+html);if(/^<!doctype[^>]*>/i.test(text))return text.replace(/^(<!doctype[^>]*>)/i,'$1'+html);return html+text}
 function install(dir){
  if(http.Server.prototype.__vpscloudBridge)return;
  http.Server.prototype.__vpscloudBridge=true;
@@ -50,7 +51,7 @@ function middleware(dir){return function(req,res,next){
  const url=req.url.split('?')[0];
  if(url==='/monitor'||url==='/monitor/'||url==='/ops/monitor/'||url==='/ops/monitor'){
   let text=fs.readFileSync(path.join(dir,'monitor.html'),'utf8');
-  text=text.replace(/<head[^>]*>/i,m=>m+'<script>'+browserShim()+'</script>');return res.type('html').send(text);
+  text=inject(text,'<script>'+browserShim()+'</script>');return res.type('html').send(text);
  }
  if(url!=='/manager'&&!url.startsWith('/manager/'))return next();
  if(req.method!=='GET'&&req.method!=='HEAD')return res.status(405).end();
