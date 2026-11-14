@@ -14,10 +14,16 @@ function valid(req,secret,now=Date.now()){
  return expiry;
 }
 function browserShim(){
- return `(()=>{const base=${JSON.stringify(BASE)};function mapped(value){const u=new URL(String(value),location.href);if(!['http:','https:','ws:','wss:'].includes(u.protocol))return value;u.host=location.host;u.port=new URL(location.href).port;u.protocol=/^ws/.test(u.protocol)?(location.protocol==='https:'?'wss:':'ws:'):location.protocol;if(!u.pathname.startsWith(base+'/')&&u.pathname!==base)u.pathname=base+u.pathname;return u.href}const fetch0=window.fetch;window.fetch=function(input,init){return fetch0.call(this,input instanceof Request?new Request(mapped(input.url),input):mapped(input),init)};const open=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(method,url,...rest){return open.call(this,method,mapped(url),...rest)};const WS=window.WebSocket;window.WebSocket=class extends WS{constructor(url,protocols){super(mapped(url),...(protocols===undefined?[]:[protocols]))}};})();`;
+ return `(()=>{const base=${JSON.stringify(BASE)};
+ function mapped(value){const u=new URL(String(value),location.href);if(!['http:','https:','ws:','wss:'].includes(u.protocol))return value;u.host=location.host;u.port=new URL(location.href).port;u.protocol=/^ws/.test(u.protocol)?(location.protocol==='https:'?'wss:':'ws:'):location.protocol;if(u.pathname.startsWith('/assets/'))u.pathname='/manager'+u.pathname;if(!u.pathname.startsWith(base+'/')&&u.pathname!==base)u.pathname=base+u.pathname;return u.href}
+ const fetch0=window.fetch;window.fetch=function(input,init){return fetch0.call(this,input instanceof Request?new Request(mapped(input.url),input):mapped(input),init)};
+ const open=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(method,url,...rest){return open.call(this,method,mapped(url),...rest)};
+ const WS=window.WebSocket;window.WebSocket=class extends WS{constructor(url,protocols){super(mapped(url),...(protocols===undefined?[]:[protocols]))}};
+ for(const [name,prop] of [['HTMLScriptElement','src'],['HTMLLinkElement','href']]){const cls=window[name];if(!cls)continue;const d=Object.getOwnPropertyDescriptor(cls.prototype,prop);if(d&&d.set)Object.defineProperty(cls.prototype,prop,{...d,set(value){const u=new URL(String(value),location.href);d.set.call(this,u.origin===location.origin&&u.pathname.startsWith('/assets/')?mapped(value):value)}})}
+ })();`;
 }
 function transform(body,type){
- let text=String(body).split('/manager').join(BASE+'/manager');
+ let text=String(body).replace(/(["'`(])\/assets\//g,'$1/manager/assets/').split('/manager').join(BASE+'/manager');
  if(type==='html')text=text.replace(/<head[^>]*>/i,m=>m+'<base href="'+BASE+'/manager/"><script>'+browserShim()+'</script>');
  return text;
 }

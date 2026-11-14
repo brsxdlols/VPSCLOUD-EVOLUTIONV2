@@ -5,6 +5,7 @@ function ticket(expiry=now+180){const s=expiry+'.'+'12'.repeat(16);return s+'.'+
 function request(token,origin){return {headers:{cookie:b.COOKIE+'='+token,host:'mk.test',...(origin?{origin}:{})}}}
 assert.ok(b.valid(request(ticket()),secret));assert.equal(b.valid(request(ticket(now-1)),secret),false);assert.equal(b.valid(request(ticket(now+999)),secret),false);assert.equal(b.valid(request(ticket()+'a'),secret),false);assert.equal(b.valid(request(ticket(),'https://other.test'),secret),false);assert.equal(b.valid(request(ticket()),''),false);
 const html=b.transform('<html><head></head><script src="/manager/assets/app.js"></script></html>','html');assert.ok(html.includes(b.BASE+'/manager/assets/app.js'));assert.ok(html.includes('<base href="'+b.BASE+'/manager/">'));
+assert.ok(b.transform('<head></head><script src="/assets/main.js"></script>','html').includes(b.BASE+'/manager/assets/main.js'));
 const calls=[];class XHR{open(...args){calls.push(args)}}class WS{constructor(...args){calls.push(args)}}
 const location={href:'https://mk.test'+b.BASE+'/manager/',host:'mk.test',protocol:'https:'};
 const context={URL,Request,location,XMLHttpRequest:XHR,window:{fetch:(...args)=>{calls.push(args);return Promise.resolve()},WebSocket:WS}};
