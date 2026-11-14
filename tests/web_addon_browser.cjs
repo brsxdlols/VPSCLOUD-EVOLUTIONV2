@@ -25,6 +25,7 @@ const assert=require('assert/strict');
  await page.getByRole('button',{name:'Ver instâncias do Evolution',exact:true}).click();await page.getByText('CI_ONLY_NO_PHONE — ○ WhatsApp desconectado',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Usar esta instância',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
  assert.equal(await page.locator('[name=wapp_host]').inputValue(),'172.16.30.25:7070');assert.equal(await page.locator('[name=wapp_login]').inputValue(),'CI_ONLY_NO_PHONE');assert.equal(await page.locator('[name=wapp_pass]').inputValue(),'ci-instance-token');await page.getByText(/Clique em Gravar para salvar/).waitFor();
+ assert.equal(await page.locator('[name=instancia]').inputValue(),'OTHER_GATEWAY');assert.equal(await page.locator('[name=instancia_token]').inputValue(),'OTHER_TOKEN');
  await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?existing=1&vpscloud_evolution=1');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'172.16.30.25:7070');
  console.log('PASS real browser: native login, original Manager, local API routing, WebSocket, monitor and native address autofill');
 }catch(e){console.error(e);if(page)for(const f of page.frames()){try{console.log('Frame',f.url(),(await f.locator('body').innerText({timeout:2000})).slice(0,6000))}catch{}}process.exitCode=1}finally{await browser.close()}})();

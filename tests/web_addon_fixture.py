@@ -26,7 +26,7 @@ def main():
     for name in ['estilos/mk-auth.css','scripts/jquery.js','scripts/mk-auth.js']:
         file=target.parents[1]/name;file.parent.mkdir(exist_ok=True);file.write_text('')
     script=w.menu('', '172.16.30.25:7070');(target.parent/'addon.js').write_text(script)
-    (target.parents[1]/'conf_zap_serv.hhvm').write_text('''<!doctype html><input name="wapp_host"><input name="wapp_login" value="KEEP_INSTANCE"><input name="wapp_pass" type="password" value="KEEP_TOKEN"><select name="wapp_servidor"><option value="">Outro</option><option value="evolution2_api">Evolution2 API</option></select><script>if(location.search.includes('existing=1'))document.querySelector('[name=wapp_host]').value='192.168.99.10:8080';</script><script src="/admin/addons/addon.js"></script>''')
+    (target.parents[1]/'conf_zap_serv.hhvm').write_text('''<!doctype html><input name="instancia" value="OTHER_GATEWAY"><input name="instancia_token" value="OTHER_TOKEN"><input name="wapp_host"><input name="wapp_login" value="KEEP_INSTANCE"><input name="wapp_pass" type="password" value="KEEP_TOKEN"><select name="wapp_servidor"><option value="">Outro</option><option value="evolution2_api">Evolution2 API</option></select><script>if(location.search.includes('existing=1'))document.querySelector('[name=wapp_host]').value='192.168.99.10:8080';</script><script src="/admin/addons/addon.js"></script>''')
     folder=Path('/opt/vpscloud-evolution-v2/monitor');folder.mkdir(parents=True);os.chmod(str(folder),0o755)
     for name in ['monitor-hook.cjs','monitor.html','mkauth-bridge.cjs']:shutil.copyfile(str(ROOT/name),str(folder/name))
     (folder/'bridge-secret.json').write_text(json.dumps({'secret':secret}))

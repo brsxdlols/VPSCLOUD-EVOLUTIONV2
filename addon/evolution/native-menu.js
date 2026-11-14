@@ -10,8 +10,8 @@
   const host=document.querySelector('input[name="wapp_host"],input#wapp_host,input[name="host"],input[name="servidor"]');
   const type=document.querySelector('select[name="wappservidor"],select[name="wapp_servidor"],select#wapp_servidor')||Array.from(document.querySelectorAll('select')).find(s=>Array.from(s.options).some(o=>o.value==='evolution2_api'));
   if(!host||host.type==='password')return;
-  const instance=document.querySelector('input[name="instancia"],input[name="wapp_login"]');
-  const key=document.querySelector('input[name="instancia_token"],input[name="wapp_pass"]');
+  const instance=document.querySelector('input[name="wapp_login"]')||document.querySelector('input[name="instancia"]');
+  const key=document.querySelector('input[name="wapp_pass"]')||document.querySelector('input[name="instancia_token"]');
   if(instance&&key){
    const button=document.createElement('button');button.type='button';button.textContent='Ver instâncias do Evolution';button.className='button is-info';button.style.margin='10px 0';
    const note=document.createElement('p');note.setAttribute('role','status');
