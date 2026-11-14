@@ -1,0 +1,20 @@
+const {chromium}=require('/tmp/evolution-browser-check/node_modules/playwright');
+const assert=require('assert/strict');
+(async()=>{const browser=await chromium.launch({headless:true});try{
+ const page=await browser.newPage();
+ let r=await page.goto('http://127.0.0.1/admin/addons/evolution/');assert.equal(r.status(),401);
+ r=await page.goto('http://127.0.0.1/admin/addons/evolution/app/manager/');assert.equal(r.status(),401);
+ await page.goto('http://127.0.0.1/admin/addons/evolution/login-fixture.php');
+ await page.locator('iframe').waitFor();
+ const frame=page.frameLocator('iframe');await frame.locator('input[type=password]').fill('ci-only-global-key');
+ await frame.getByRole('button',{name:/login/i}).click();
+ await frame.getByText('CI_ONLY_NO_PHONE',{exact:true}).waitFor({timeout:20000});
+ const inside=page.frames().find(f=>f.url().includes('/app/manager'));
+ const ws=await inside.evaluate(()=>new Promise(resolve=>{const ws=new WebSocket('ws://127.0.0.1:7070/socket.io/');const t=setTimeout(()=>resolve(false),7000);ws.onopen=()=>{clearTimeout(t);ws.close();resolve(true)};ws.onerror=()=>{clearTimeout(t);resolve(false)}}));assert.ok(ws,'same-origin WebSocket proxy failed');
+ await page.getByRole('link',{name:'Alertas Telegram',exact:true}).click();
+ const monitor=page.frameLocator('iframe');await monitor.locator('#key').fill('ci-only-global-key');await monitor.locator('#enter').click();await monitor.locator('#panel').waitFor({state:'visible',timeout:15000});
+ await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'172.16.30.25:7070');assert.equal(await page.locator('[name=wapp_login]').inputValue(),'KEEP_INSTANCE');assert.equal(await page.locator('[name=wapp_pass]').inputValue(),'KEEP_TOKEN');
+ await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?existing=1');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'192.168.99.10:8080');
+ await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?existing=1&vpscloud_evolution=1');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'172.16.30.25:7070');
+ console.log('PASS real browser: native login, original Manager, local API routing, WebSocket, monitor and native address autofill');
+}catch(e){console.error(e);process.exitCode=1}finally{await browser.close()}})();

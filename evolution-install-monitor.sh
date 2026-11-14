@@ -27,9 +27,14 @@ printf '%s  %s\n' '20a8fb03853b5f9f2ed8ed6c58e065524ed34ea28f84a8c9cbab9447f7922
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/f1d2c2681677c15a9928f3f353bc4ff7d0079296/evolution-log-policy.sh" -o "$STAGE/evolution-log-policy.sh"
 printf '%s  %s\n' '7b3888377a98bbd14a0d5b8718c78edba67c27acf9dab165ebbaf96910d8a9d1' "$STAGE/evolution-log-policy.sh" | sha256sum -c - >/dev/null
 MONITOR="$PROJECT/monitor"
+curl -fsSL --retry 3 "BRIDGE_PAYLOAD_URL" -o "$STAGE/mkauth-bridge.cjs"
+printf '%s  %s\n' 'BRIDGE_PAYLOAD_SHA' "$STAGE/mkauth-bridge.cjs" | sha256sum -c - >/dev/null
 mkdir -p "$MONITOR"
 chmod 700 "$MONITOR"
-for file in monitor-hook.cjs monitor.html evolution-watchdog.py evolution-enable-monitor.py evolution-log-policy.sh; do
+for file in monitor-hook.cjs mkauth-bridge.cjs; do
+  if [ ! -f "$MONITOR/$file" ] || ! cmp -s "$STAGE/$file" "$MONITOR/$file"; then touch "$MONITOR/.reload-required"; fi
+done
+for file in monitor-hook.cjs mkauth-bridge.cjs monitor.html evolution-watchdog.py evolution-enable-monitor.py evolution-log-policy.sh; do
   chmod 600 "$STAGE/$file"
   mv -f "$STAGE/$file" "$MONITOR/$file"
 done

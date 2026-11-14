@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),os=require('os'),assert=require('assert/strict'),cp=require('child_process');
 const root=path.resolve(__dirname,'..'),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'monitor-test-'));
-for(const f of ['monitor-hook.cjs','monitor.html'])fs.copyFileSync(path.join(root,f),path.join(tmp,f));
+for(const f of ['monitor-hook.cjs','monitor.html','mkauth-bridge.cjs'])fs.copyFileSync(path.join(root,f),path.join(tmp,f));
 const key='test-administrator-key',fakeToken='123456:'+('A'.repeat(35));
 fs.writeFileSync(path.join(tmp,'config.json'),JSON.stringify({telegram_bot_token:fakeToken,telegram_chat_id:'-100123',instances:[]}));
 const server=cp.spawn(process.execPath,['-r',path.join(tmp,'monitor-hook.cjs'),'-e',`const e=require('express'),a=e();a.use((r,s,n)=>n());a.get('/',(r,s)=>s.send('OK'));a.get('/instance/fetchInstances',(r,s)=>s.json([{name:'MKAUTH',token:'do-not-return-this'}]));a.listen(8080,'127.0.0.1')`],{env:{...process.env,AUTHENTICATION_API_KEY:key,NODE_PATH:'/evolution/node_modules'},stdio:'ignore'});

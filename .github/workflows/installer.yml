@@ -4,6 +4,19 @@ on:
     branches: [main, fix/safe-evolution-v237-installer]
   pull_request:
 jobs:
+  web_addon_compatibility:
+    if: github.ref == 'refs/heads/fix/safe-evolution-v237-installer' && contains(github.event.head_commit.message, '[web-addon-e2e]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: sudo apt-get update -qq && sudo apt-get install -y apache2 libapache2-mod-php
+      - run: npm install --prefix /tmp/evolution-browser-check playwright@1.56.1
+      - run: /tmp/evolution-browser-check/node_modules/.bin/playwright install --with-deps chromium
+      - run: sudo -E env VPSCLOUD_CI_WEB_TEST=1 python3 tests/web_addon_fixture.py
   upgrade_compatibility:
     if: github.ref == 'refs/heads/fix/safe-evolution-v237-installer' && contains(github.event.head_commit.message, '[upgrade-e2e]')
     runs-on: ubuntu-latest
@@ -24,6 +37,7 @@ jobs:
       - run: node tests/installer.test.cjs
       - run: node tests/monitor-ui.test.cjs
       - run: node tests/recibo-switch.test.cjs
+      - run: node tests/bridge.test.cjs
       - run: python3 -m unittest discover -s tests -p '*_test.py' -v
       - name: Validate patches against the pinned Manager image
         run: >-

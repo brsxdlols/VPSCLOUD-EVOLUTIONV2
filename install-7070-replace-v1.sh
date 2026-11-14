@@ -106,11 +106,19 @@ install_integrations() {
   else
     /usr/local/sbin/evolution-install-monitor --key-only
   fi
+  if [ -d /opt/mk-auth/admin ] && [ "${EVOLUTION_INSTALL_WEB_ADDON:-1}" = 1 ] && [ "${EVOLUTION_INSTALL_MONITOR:-1}" = 1 ]; then
+    /usr/local/sbin/evolution-install-web-addon
+  fi
   if [ -d /opt/mk-auth/admin ] && [ "${EVOLUTION_INSTALL_RECIBO:-1}" = 1 ]; then
     /usr/local/sbin/evolution-install-recibo
   fi
 }
 install_session_helpers() {
+  HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-web-addon.tmp.XXXXXX)
+  curl -fsSL --retry 3 "WEB_WRAPPER_URL" -o "$HELPER_TMP"
+  printf '%s  %s\n' 'WEB_WRAPPER_SHA' "$HELPER_TMP" | sha256sum -c - >/dev/null
+  chmod 700 "$HELPER_TMP"
+  mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-web-addon
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-recibo.tmp.XXXXXX)
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/c363e7d02207577bc1c0d57bbe7093b1617d465a/evolution-install-recibo.sh" -o "$HELPER_TMP"
 printf '%s  %s\n' '4343d5e7a52b27e66d6c4129d75a1c2cc3c754c6b1638b9b3d4148ae2e6de1a9' "$HELPER_TMP" | sha256sum -c - >/dev/null

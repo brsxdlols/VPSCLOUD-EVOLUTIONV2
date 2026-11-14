@@ -2,6 +2,7 @@
 // Loaded by NODE_OPTIONS before the existing API. No changes to upstream bundles.
 const fs=require('fs'),path=require('path'),crypto=require('crypto');
 const dir=__dirname,configPath=path.join(dir,'config.json'),statePath=path.join(dir,'state.json');
+const bridge=require('./mkauth-bridge.cjs');bridge.install(dir);
 function read(p,fallback){try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return fallback}}
 function auth(req,res,next){const a=Buffer.from(String(req.headers.apikey||'')),b=Buffer.from(process.env.AUTHENTICATION_API_KEY||'');if(!b.length||a.length!==b.length||!crypto.timingSafeEqual(a,b))return res.status(401).json({error:'Chave global da API invalida'});if(req.headers.origin){try{if(new URL(req.headers.origin).host!==req.headers.host)return res.status(403).end()}catch{return res.status(403).end()}}next()}
 function validateTarget(input,previous){
@@ -17,6 +18,7 @@ const express=require('express'),original=express.application.use;
 express.application.use=function(...args){
  if(!this.__vpscloudMonitor){
   this.__vpscloudMonitor=true;
+  original.call(this,bridge.middleware(dir));
   const router=express.Router();
   router.get('/',(req,res)=>res.type('html').send(fs.readFileSync(path.join(dir,'monitor.html'),'utf8')));
   router.use('/api',auth,express.json({limit:'32kb'}));

@@ -36,6 +36,14 @@ Quando você escolhe outra chave para uma V2 existente, somente a API é recriad
 
 ## Manager e manutenção
 
+### Acesso pelo addon do MK-AUTH
+
+O instalador inclui `/admin/addons/evolution/`, com abas **Manager** e **Alertas Telegram**, e atalhos no menu Provedor. O Apache faz proxy somente para a porta local da Evolution, incluindo WebSocket; basta o acesso web habitual do MK-AUTH, sem publicar outra porta. O login nativo emite um ticket HttpOnly de curta duracao, renovado enquanto a sessao estiver valida. Manager e monitor continuam pedindo a API Key Global. O segredo do proxy fica fora da pasta publica e nao e a chave da API.
+
+Requer Apache2 com proxy, proxy_http, proxy_wstunnel e rewrite. A configuracao e validada antes do reload; em erro, a configuracao anterior e restaurada. Nginx ou outros servidores exigem configurar o proxy equivalente, e o instalador informa essa limitacao. O monitor precisa estar habilitado. `EVOLUTION_INSTALL_WEB_ADDON=0` desativa essa integracao. O comando `evolution-install-web-addon` reaplica apenas o addon/proxy quando os auxiliares novos ja estiverem carregados.
+
+Na tela **Opcoes → WhatsApp → Servidor**, um endereco vazio recebe o IP IPv4 de saida da maquina e a porta publicada da API, por exemplo `172.16.30.25:7070`, e seleciona Evolution2 API. Instancia e chave nao sao alteradas. O botao **Configurar servidor WhatsApp** do addon permite preencher esse endereco tambem quando ja existe outro: revise instancia/chave e clique em Gravar no MK-AUTH. O preenchimento da pagina nao grava o banco automaticamente.
+
 Preserva logo VPSCloud, normalização brasileira, telefone opcional, fallback de clipboard em HTTP e backup do Manager. O botão Chat/+ agora abre conversa para número informado. Recarregue com Ctrl+F5 depois do PATCH. Esse botão foi validado no ambiente acompanhado; o comportamento visual de contatos novos ainda deve ser homologado em outros bundles.
 
 Não há limpeza global automática por padrão. `EVOLUTION_INSTALL_CLEANUP=1` instala somente relatório de armazenamento; não apaga mensagens, imagens Docker, backups, caches ou logs do MK-AUTH. Crons antigos não são removidos silenciosamente: revise-os antes de continuar. Os logs próprios do Recibo Evolution agora usam a política unificada de até sete dias. Logs de containers novos usam os limites do driver Docker.

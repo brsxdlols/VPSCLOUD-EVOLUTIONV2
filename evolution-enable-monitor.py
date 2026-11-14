@@ -154,7 +154,8 @@ def main():
         (backup/('key-config-before-'+str(index))).write_text(content)
     configure_docker_boot()
     loaded = '/evolution/ops-monitor' in [x['Destination'] for x in info['Mounts']] and '--require=/evolution/ops-monitor/monitor-hook.cjs' in ' '.join(info['Config']['Env'])
-    if (not loaded and not key_only) or key_changed:
+    reload_marker=MONITOR / '.reload-required'
+    if (not key_only and (not loaded or reload_marker.exists())) or key_changed:
         marker = MAINTENANCE
         already_paused = marker.exists()
         marker.touch()
@@ -210,6 +211,7 @@ def main():
         command(['/etc/init.d/cron', 'start'])
     else:
         raise ValueError('Cron nao encontrado; configure um agendador antes de considerar o monitor ativo')
+    if reload_marker.exists(): reload_marker.unlink()
     print('Monitor instalado. Painel: /monitor/ . Backup: ' + str(backup))
     return 0
 
