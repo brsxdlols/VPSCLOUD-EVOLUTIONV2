@@ -146,3 +146,7 @@ A janela **Enviar titulo** ganha os seletores **Texto / Foto**, para PNG/JPG/GIF
 Fotos preparadas ficam apenas na memoria da API, por ate 30 minutos, com limite de dez imagens. Fotos expiradas ou de outra instancia bloqueiam o envio da mensagem marcada, sem enviar o identificador interno ao cliente. Texto comum, envio automatico e documentos continuam no fluxo existente. Atualizar o auxiliar pode reiniciar brevemente a API, preservando os pareamentos.
 
 O layout manual acompanha o padrao do MK-AUTH: seletores Texto/Foto, arquivo a esquerda, previa ao lado e legenda na coluna restante. O controle nativo de PDF permanece selecionavel junto. Texto, variaveis e controles de emoji sao preservados ao alternar os modos.
+
+### Espaco dos backups de imagem
+
+Apos concluir e validar a instalacao ou atualizacao, o instalador remove somente `backups/session-*/api-image.tar`. A imagem pode ser copiada temporariamente durante um upgrade para permitir rollback em caso de falha; a limpeza nao ocorre quando a instalacao falha. Dumps PostgreSQL, Redis, sessoes, configuracoes e demais backups sao preservados. O manifesto de checksums e ajustado e sua versao anterior e guardada. A limpeza nao remove imagens instaladas no Docker e nao desconecta o WhatsApp.

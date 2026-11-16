@@ -163,6 +163,45 @@ printf '%s  %s\n' 'b0ee4ea28776d741449d7424ec5e1bed5ff9fcd17ad483426a6bee37b561e
   fi
 }
 
+# IMAGE-ARCHIVE-CLEANUP-BEGIN
+cleanup_image_archives() {
+  EVOLUTION_CLEANUP_PROJECT="$PROJECT_DIR" python3 - <<'IMAGE_ARCHIVE_CLEANUP'
+import os, re, shutil
+from pathlib import Path
+project=Path(os.environ['EVOLUTION_CLEANUP_PROJECT'])
+root=project/'backups'
+lock=Path('/run/lock/vpscloud-evolution-session.lock')
+if root.is_symlink() or not root.is_dir():raise SystemExit(0)
+try:lock.mkdir()
+except FileExistsError:
+    print('INFO: limpeza de imagens adiada; operacao de sessao em andamento.')
+    raise SystemExit(0)
+try:
+    removed=0
+    for folder in root.iterdir():
+        if folder.is_symlink() or not folder.is_dir() or not re.fullmatch(r'session-\d{8}-\d{6}-\d+',folder.name):continue
+        image=folder/'api-image.tar'
+        if image.is_symlink() or not image.is_file():continue
+        manifest=folder/'SHA256SUMS'
+        if manifest.is_symlink():continue
+        if manifest.exists():
+            original=folder/'SHA256SUMS.before-image-cleanup'
+            if original.is_symlink():continue
+            if not original.exists():shutil.copy2(str(manifest),str(original))
+            text=manifest.read_text()
+            lines=[line for line in text.splitlines(True) if not re.fullmatch(r'[0-9a-fA-F]{64} [ *]api-image\.tar\s*',line)]
+            temp=folder/'SHA256SUMS.image-cleanup.tmp'
+            if temp.exists() or temp.is_symlink():continue
+            with temp.open('x') as stream:stream.write(''.join(lines))
+            temp.chmod(manifest.stat().st_mode & 0o777)
+            os.replace(str(temp),str(manifest))
+        removed+=image.stat().st_size
+        image.unlink()
+    print('Imagens de backup removidas apos validacao: %.2f GiB. Backups dos dados preservados.'%(removed/1024**3))
+finally:lock.rmdir()
+IMAGE_ARCHIVE_CLEANUP
+}
+# IMAGE-ARCHIVE-CLEANUP-END
 choose_api_key() {
   CURRENT_API_KEY="${1:-}"
   API_KEY="${EVOLUTION_API_KEY:-}"
@@ -480,6 +519,7 @@ patch_existing_v2() {
   retire_legacy_v1
   echo "API: HTTP $CODE"
   install_daily_cleanup
+  cleanup_image_archives
   if [ "$PAIRINGS_RESET" = 1 ]; then
     echo 'V2 atualizada e pareamentos encerrados. Conecte novamente pelo QR Code.'
   else
@@ -495,6 +535,7 @@ if [ "${EVOLUTION_MODE:-apply}" = web-addon ]; then
   install_session_helpers
   /usr/local/sbin/evolution-install-monitor
   /usr/local/sbin/evolution-install-web-addon
+  cleanup_image_archives
   echo 'Addon web instalado. Pareamentos preservados; nenhum logout solicitado.'
   exit 0
 fi
@@ -658,6 +699,7 @@ install_mkauth_recibo_log_rotation
 install_session_helpers
 install_integrations
 
+cleanup_image_archives
 echo
 echo "Evolution API v2 instalada com sucesso."
 echo "Porta: $API_PORT"
