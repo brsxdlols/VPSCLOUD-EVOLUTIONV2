@@ -17,11 +17,12 @@ function evolution_title_photo($config){
     try{
         $connection=function(){ob_start();include_once '/opt/mk-auth/admin/config.php';ob_end_clean();return isset($conn)?$conn:($GLOBALS['conn']??null);};$db=$connection();
         if(!($db instanceof mysqli))throw new RuntimeException('Configuracao nativa indisponivel.');
-        $q=$db->query("SELECT nome,valor FROM sis_opcao WHERE nome IN ('wapp_servidor','wapp_host','wapp_login')");if(!$q)throw new RuntimeException('Configuracao WhatsApp indisponivel.');
+        $q=$db->query("SELECT nome,valor FROM sis_opcao WHERE nome IN ('wapp_servidor','wapp_host','wapp_login','libzap')");if(!$q)throw new RuntimeException('Configuracao WhatsApp indisponivel.');
         $native=[];while($row=$q->fetch_assoc())$native[$row['nome']]=$row['valor'];
         $host=trim($native['wapp_host']??'');$url=parse_url(strpos($host,'://')===false?'http://'.$host:$host);
         $installed=parse_url('http://'.$config['address']);
-        if(($native['wapp_servidor']??'')!=='evolution2_api'||!$url||($url['scheme']??'')!=='http'||isset($url['user'])||isset($url['pass'])||isset($url['query'])||isset($url['fragment'])||!in_array($url['path']??'',['','/'],true)||!in_array($url['host']??'',['127.0.0.1','localhost',$installed['host']],true)||($url['port']??80)!==$config['port']||empty($native['wapp_login']))throw new RuntimeException('Configure WhatsApp Servidor como Evolution2 API local para anexar fotos aos titulos.');
+        $v2=($native['wapp_servidor']??'')==='evolution2_api'||(($native['wapp_servidor']??'')==='evolution_api'&&($native['libzap']??'')==='/opt/mk-auth/libs/ZAP/evolution2.php');
+        if(!$v2||!$url||($url['scheme']??'')!=='http'||isset($url['user'])||isset($url['pass'])||isset($url['query'])||isset($url['fragment'])||!in_array($url['path']??'',['','/'],true)||!in_array($url['host']??'',['127.0.0.1','localhost',$installed['host']],true)||($url['port']??80)!==$config['port']||empty($native['wapp_login']))throw new RuntimeException('Configure WhatsApp Servidor como Evolution2 API local para anexar fotos aos titulos.');
         if($method==='GET'){$ready=evolution_title_photo_request($config);if(empty($ready['ready']))throw new RuntimeException('Auxiliar de fotos indisponivel.');picker_reply(200,['csrf'=>$_SESSION['evolution_title_csrf'],'maxBytes'=>2*1024*1024]);}
         $file=$_FILES['photo']??[];
         if(($file['error']??-1)!==UPLOAD_ERR_OK||empty($file['tmp_name'])||!is_uploaded_file($file['tmp_name'])||($file['size']??0)>2*1024*1024)throw new RuntimeException('Selecione uma foto PNG, JPG ou GIF de ate 2 MiB.');

@@ -20,7 +20,7 @@ function recibo_defaults() {
         'template'=>"💵 *CONFIRMAÇÃO DE PAGAMENTO*\n\n👤 *Cliente*: {cliente}\n📄 *ID do pagamento*: {id_pagamento}\n📑 *CPF/CNPJ*: {cpf_cnpj}\n✅ *Pagamento recebido em*: {data_pagamento}\n📅 *Vencimento*: {data_vencimento}\n💰 *Valor da fatura*: R$ {valor}\n💸 *Valor pago*: R$ {valor_pago}\n👤 *Recebido por*: {coletor}\n💳 *Forma de pagamento*: {forma_pagamento}\n\n*Atenciosamente, {provedor}* 🤝\n_Mensagem gerada automaticamente pelo sistema._");
 }
 function recibo_native_connection($items) {
-    if (($items['wapp_servidor'] ?? '')!=='evolution2_api') throw new Exception('O servidor WhatsApp do MK-AUTH deve estar configurado como Evolution2 API.');
+    if (($items['wapp_servidor'] ?? '')!=='evolution2_api' && !(($items['wapp_servidor'] ?? '')==='evolution_api' && ($items['libzap'] ?? '')==='/opt/mk-auth/libs/ZAP/evolution2.php')) throw new Exception('O servidor WhatsApp do MK-AUTH deve estar configurado como Evolution2 API.');
     $url=trim($items['wapp_host'] ?? '');if(strpos($url,'://')===false)$url='http://'.$url;
     $u=parse_url($url);$instance=trim($items['wapp_login'] ?? '');$token=trim($items['wapp_pass'] ?? '');
     if(!$u || empty($u['host']) || !in_array($u['scheme'] ?? '',array('http','https'),true) || isset($u['user']) || isset($u['pass']) || preg_match('/[\r\n]/',$url.$token) || !$instance || strlen($instance)>100 || !$token)throw new Exception('Servidor WhatsApp incompleto ou invalido no MK-AUTH.');

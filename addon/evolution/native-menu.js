@@ -9,6 +9,7 @@
   if(!/\/admin\/conf_zap_serv\.hhvm$/.test(location.pathname))return;
   const host=document.querySelector('input[name="wapp_host"],input#wapp_host,input[name="host"],input[name="servidor"]');
   const type=document.querySelector('select[name="wappservidor"],select[name="wapp_servidor"],select#wapp_servidor')||Array.from(document.querySelectorAll('select')).find(s=>Array.from(s.options).some(o=>o.value==='evolution2_api'));
+  const gateway=type&&Array.from(type.options).some(o=>o.value==='evolution2_api')?'evolution2_api':'evolution_api';
   if(!host||host.type==='password')return;
   const instance=document.querySelector('input[name="wapp_login"]')||document.querySelector('input[name="instancia"]');
   const key=document.querySelector('input[name="wapp_pass"]')||document.querySelector('input[name="instancia_token"]');
@@ -32,7 +33,7 @@
       const select=document.createElement('button');select.type='button';select.className='button is-info';select.textContent='Usar esta inst\xe2ncia';
       select.onclick=async()=>{select.disabled=true;try{
        const chosen=await request({method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({name:item.name,csrf:data.csrf})});
-       host.value=chosen.address;instance.value=chosen.name;key.value=chosen.token;if(type)type.value='evolution2_api';
+       host.value=chosen.address;instance.value=chosen.name;key.value=chosen.token;if(type)type.value=gateway;
        for(const input of [host,instance,key,type].filter(Boolean))for(const event of ['input','change'])input.dispatchEvent(new Event(event,{bubbles:true}));
        note.textContent='Inst\xe2ncia '+chosen.name+' preenchida \u2014 '+(chosen.state==='open'?'WhatsApp conectado.':'WhatsApp desconectado.')+' Clique em Gravar para salvar.';dialog.close();
       }catch(error){message.textContent=error.message;select.disabled=false;}};
@@ -43,7 +44,7 @@
   }
   if(host.value.trim()&&!new URLSearchParams(location.search).has('vpscloud_evolution'))return;
   host.value=__EVOLUTION_NATIVE_ADDRESS__;
-  if(type){type.value='evolution2_api';type.dispatchEvent(new Event('change',{bubbles:true}));}
+  if(type){type.value=gateway;type.dispatchEvent(new Event('change',{bubbles:true}));}
   host.dispatchEvent(new Event('input',{bubbles:true}));host.dispatchEvent(new Event('change',{bubbles:true}));
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fill);else fill();

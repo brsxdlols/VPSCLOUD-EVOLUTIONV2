@@ -29,6 +29,7 @@ const assert=require('assert/strict');
  await page.getByRole('link',{name:'Alertas Telegram',exact:true}).click();
  const monitor=page.frameLocator('iframe');await monitor.locator('#key').fill('ci-only-global-key');await monitor.locator('#enter').click();await monitor.locator('#panel').waitFor({state:'visible',timeout:15000});
  await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'172.16.30.25:7070');assert.equal(await page.locator('[name=wapp_login]').inputValue(),'KEEP_INSTANCE');assert.equal(await page.locator('[name=wapp_pass]').inputValue(),'KEEP_TOKEN');
+ await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?legacy=1');assert.equal(await page.locator('[name=wapp_servidor]').inputValue(),'evolution_api');
  await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?existing=1');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'192.168.99.10:8080');
  const endpoint='http://127.0.0.1/admin/addons/evolution/index.php?instances=1';
  const listing=await page.request.get(endpoint);const entries=await listing.json();assert.equal(listing.status(),200);assert.equal(entries.instances[0].state,'close');assert.ok(!JSON.stringify(entries).includes('ci-instance-token'));assert.ok(!JSON.stringify(entries).includes('ci-only-global-key'));
