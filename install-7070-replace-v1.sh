@@ -67,7 +67,7 @@ chmod 700 "$PROJECT_DIR" "$BACKUP_ROOT"
 retire_legacy_v1() {
   [ "$LEGACY_V1" = 1 ] || return 0
   V1_HELPER=$(mktemp "$PROJECT_DIR/.retire-v1.XXXXXX")
-  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-retire-v1.py" -o "$V1_HELPER"
+  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-retire-v1.py" -o "$V1_HELPER"
   printf '%s  %s\n' 'b69a87a4c1e56ccb08942949b43260eb5896277b9ca04f539f7e267d1b512b82' "$V1_HELPER" | sha256sum -c - >/dev/null
   python3 "$V1_HELPER"
   rm -f "$V1_HELPER"
@@ -93,7 +93,7 @@ CLEANUP
 install_log_rotation() {
   mkdir -p "$PROJECT_DIR/monitor"
   POLICY_TMP=$(mktemp "$PROJECT_DIR/monitor/.log-policy.XXXXXX")
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-log-policy.sh" -o "$POLICY_TMP"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-log-policy.sh" -o "$POLICY_TMP"
 printf '%s  %s\n' '7b3888377a98bbd14a0d5b8718c78edba67c27acf9dab165ebbaf96910d8a9d1' "$POLICY_TMP" | sha256sum -c - >/dev/null
   chmod 600 "$POLICY_TMP"
   mv -f "$POLICY_TMP" "$PROJECT_DIR/monitor/evolution-log-policy.sh"
@@ -115,19 +115,19 @@ install_integrations() {
 }
 install_session_helpers() {
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-web-addon.tmp.XXXXXX)
-  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-install-web-addon.sh" -o "$HELPER_TMP"
-  printf '%s  %s\n' '549df960bb87d70050a6a5845237c4a6c53d234ef93cdc50e55603fd4e6142b3' "$HELPER_TMP" | sha256sum -c - >/dev/null
+  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-install-web-addon.sh" -o "$HELPER_TMP"
+  printf '%s  %s\n' '256b36aaa657b3a77859ba72220536ee59b2b8d1ec6b6ed57d8cb4588145cb34' "$HELPER_TMP" | sha256sum -c - >/dev/null
   chmod 700 "$HELPER_TMP"
   mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-web-addon
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-recibo.tmp.XXXXXX)
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-install-recibo.sh" -o "$HELPER_TMP"
-printf '%s  %s\n' '787ae6f08180068f4e142170cb44827c444d145a90576fedc787163dcf9b5b9c' "$HELPER_TMP" | sha256sum -c - >/dev/null
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-install-recibo.sh" -o "$HELPER_TMP"
+printf '%s  %s\n' '6d76f531c5f63c8b94b3c844d2696c963c38d1d0755ee274880f897d7d5d13ca' "$HELPER_TMP" | sha256sum -c - >/dev/null
   chmod 700 "$HELPER_TMP"
   mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-recibo
 
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-install-monitor.tmp.XXXXXX)
-  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-install-monitor.sh" -o "$HELPER_TMP" &&
-     printf '%s  %s\n' 'f2b9ec9998ee5f26a376bf9cd3eae565d5f878c2cc32a9d67a6e3cc1ae20c0ee' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
+  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-install-monitor.sh" -o "$HELPER_TMP" &&
+     printf '%s  %s\n' 'b3ec90fd51672247ab90a821ba4818627489d28fb74ab672ac13207b94365a2b' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
     chmod 700 "$HELPER_TMP"
     mv -f "$HELPER_TMP" /usr/local/sbin/evolution-install-monitor
   else
@@ -135,7 +135,7 @@ printf '%s  %s\n' '787ae6f08180068f4e142170cb44827c444d145a90576fedc787163dcf9b5
     echo "AVISO: auxiliar de monitoramento nao instalado; download ou hash invalido."
   fi
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-qr-terminal.tmp.XXXXXX)
-  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-qr-terminal.sh" -o "$HELPER_TMP" &&
+  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-qr-terminal.sh" -o "$HELPER_TMP" &&
      printf '%s  %s\n' '8ce1b975ea9765dd70cc92610e2c786cd6eb609bba34df264aa1206553502740' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
     chmod 700 "$HELPER_TMP"
     mv -f "$HELPER_TMP" /usr/local/sbin/evolution-qr-terminal
@@ -144,7 +144,7 @@ printf '%s  %s\n' '787ae6f08180068f4e142170cb44827c444d145a90576fedc787163dcf9b5
     echo "AVISO: auxiliar QR nao instalado; download ou hash invalido."
   fi
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-backup.tmp.XXXXXX)
-  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-backup.sh" -o "$HELPER_TMP" &&
+  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-backup.sh" -o "$HELPER_TMP" &&
      printf '%s  %s\n' 'faa0ee52499bd184f05ca2d1ed5548d9c8f1d633c4e3cbf44eb746ea8142b076' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
     chmod 700 "$HELPER_TMP"
     mv -f "$HELPER_TMP" /usr/local/sbin/evolution-backup
@@ -153,7 +153,7 @@ printf '%s  %s\n' '787ae6f08180068f4e142170cb44827c444d145a90576fedc787163dcf9b5
     echo "AVISO: auxiliar evolution-backup nao instalado; download ou hash invalido."
   fi
   HELPER_TMP=$(mktemp /usr/local/sbin/evolution-reconnect.tmp.XXXXXX)
-  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-reconnect.sh" -o "$HELPER_TMP" &&
+  if curl -fsSL "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-reconnect.sh" -o "$HELPER_TMP" &&
      printf '%s  %s\n' '97f647f48daa4aabdd45f332c475df76d3cf888008c588131d4916022f9e9fae' "$HELPER_TMP" | sha256sum -c - >/dev/null 2>&1; then
     chmod 700 "$HELPER_TMP"
     mv -f "$HELPER_TMP" /usr/local/sbin/evolution-reconnect
@@ -301,14 +301,14 @@ wait_api() {
 
 upgrade_existing_api() {
   UPGRADE_HELPER=$(mktemp "$PROJECT_DIR/.upgrade-api.XXXXXX")
-  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-upgrade-api.py" -o "$UPGRADE_HELPER"
+  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-upgrade-api.py" -o "$UPGRADE_HELPER"
   printf '%s  %s\n' '79f268691b1052ced86a57e22aa83b3279c5e5dfd534ad4125a4bfeb654c5cca' "$UPGRADE_HELPER" | sha256sum -c - >/dev/null
   python3 "$UPGRADE_HELPER"
   rm -f "$UPGRADE_HELPER"
 }
 force_existing_pairing_reset() {
   RESET_HELPER=$(mktemp "$PROJECT_DIR/.reset-pairing.XXXXXX")
-  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/7dbd27026988e6e056220283134b8890eedce234/evolution-reset-pairing.py" -o "$RESET_HELPER"
+  curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/ae3616d68feca5ccaf0bf5cd6b2b027438b2601c/evolution-reset-pairing.py" -o "$RESET_HELPER"
   printf '%s  %s\n' 'a695f150bf055478fe2c2407222605e2dfc1bdb53de3678fa908cd7396ffb2b6' "$RESET_HELPER" | sha256sum -c - >/dev/null
   python3 "$RESET_HELPER"
   rm -f "$RESET_HELPER"
