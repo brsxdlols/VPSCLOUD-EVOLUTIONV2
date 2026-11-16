@@ -93,7 +93,7 @@ nav.evolution-tabs{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margi
 .evolution-dialog::backdrop{background:#10283b66}.evolution-dialog h2{font-size:20px;font-weight:700;line-height:1.3;margin:0 0 12px}.evolution-dialog p{margin:0 0 20px}.evolution-dialog form{margin:0}.evolution-dialog label{font-size:14px;font-weight:600}.evolution-dialog input{box-sizing:border-box;display:block;width:100%;height:44px;margin:8px 0 0;padding:10px 12px;border:1px solid #aabfce;border-radius:6px;background:#fff;color:#183347;font:16px/22px Arial,sans-serif}.evolution-dialog input:focus{outline:2px solid #55b99c;outline-offset:1px}.evolution-dialog input[readonly]{font:14px/22px monospace;background:#f2f7f5}.evolution-dialog [hidden]{display:none!important}.evolution-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:22px}.evolution-dialog button.evolution-secondary{background:#fff;color:#294b60;border-color:#b7cad7}.evolution-dialog button.evolution-secondary:hover{background:#edf4f7}.evolution-key-result button{margin-top:12px}
 @media(max-width:520px){.evolution-tabs>a,.evolution-tabs>button{flex:1 1 190px}.evolution-dialog{padding:20px}.evolution-actions button{flex:1 1 100%}}
 </style></head><body>
-<?php include '../../topo.php';include '../../menu.php'; ?>
+<?php include __DIR__.'/../../topo.php'; ?>
 <main class="evolution-addon"><h1>Evolution API</h1><nav class="evolution-tabs"><a href="?view=manager">Manager</a><a href="?view=monitor">Alertas Telegram</a><a href="../../conf_zap_serv.hhvm?vpscloud_evolution=1">Configurar servidor WhatsApp</a><button type="button" id="show-global-key">Ver chave global</button></nav><p>Use a API Key Global para entrar no Manager e no monitor. O acesso usa o mesmo endereco web do MK-AUTH.</p><p id="session-error" role="alert"></p><iframe title="Evolution" src="app/<?php echo $view; ?>" referrerpolicy="same-origin"></iframe></main>
 <script>setInterval(async()=>{try{const r=await fetch('index.php?refresh=1',{credentials:'same-origin',cache:'no-store'});const o=await r.json();if(!r.ok||!o.ok)throw Error();}catch{document.getElementById('session-error').textContent='Sessao expirada. Entre novamente pelo MK-AUTH e reabra o addon.';}},90000);</script>
 <script>
@@ -119,4 +119,4 @@ document.getElementById('show-global-key').onclick=async function(){
  };
 };
 </script>
-<?php include '../../baixo.php'; ?></body></html>
+<?php include __DIR__.'/../../baixo.php'; ?><script src="../../menu.js.hhvm"></script></body></html>

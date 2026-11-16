@@ -11,6 +11,7 @@ const assert=require('assert/strict');
  r=await page.request.get('http://127.0.0.1/admin/addons/evolution/index.php?globalkey=1');assert.equal(r.status(),401);
  await page.goto('http://127.0.0.1/admin/addons/evolution/login-fixture.php');
  await page.locator('iframe').waitFor();
+ await page.locator('#ci-options').click();await page.locator('#ci-options-items a').waitFor({state:'visible'});assert.equal(await page.locator('#ci-options-items a').textContent(),'Servidor WhatsApp');
  const navHeights=await page.locator(".evolution-tabs>a,.evolution-tabs>button").evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().height));assert.equal(new Set(navHeights).size,1);assert.ok(navHeights[0]>=40);
  const keyEndpoint='http://127.0.0.1/admin/addons/evolution/index.php?globalkey=1';
  const challenge=await (await page.request.get(keyEndpoint)).json();assert.equal(challenge.user,'ci-admin');assert.ok(!JSON.stringify(challenge).includes('ci-only-global-key'));

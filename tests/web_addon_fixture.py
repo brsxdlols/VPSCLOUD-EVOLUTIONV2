@@ -30,7 +30,9 @@ def main():
     (receipt_data/'database.php').write_text("<?php return ['host'=>'127.0.0.1:3307','user'=>'root','password'=>'ci-db-only','name'=>'mkradius'];")
     original_receipt=json.dumps({'api_url':'http://127.0.0.1:7070','instance':'KEEP_RECEIPT','token':'KEEP_RECEIPT_TOKEN','provider':'CI Provider','template':'KEEP_TEMPLATE','receipts_enabled':False,'enabled':False,'interval':5})
     (receipt_data/'settings.json').write_text(original_receipt)
-    for name in ['topo.php','menu.php','baixo.php']:(target.parents[1]/name).write_text('')
+    for name in ['topo.php','baixo.php']:(target.parents[1]/name).write_text('')
+    (target.parents[1]/'topo.php').write_text('<nav id="ci-native-menu"><button type="button" id="ci-options">Opcoes</button><div id="ci-options-items" hidden></div></nav>')
+    (target.parents[1]/'menu.js.hhvm').write_text("document.getElementById('ci-options-items').innerHTML='<a href=\"/admin/conf_zap_serv.hhvm\">Servidor WhatsApp</a>';document.getElementById('ci-options').onclick=function(){document.getElementById('ci-options-items').hidden=false;};")
     for name in ['estilos/mk-auth.css','scripts/jquery.js','scripts/mk-auth.js']:
         file=target.parents[1]/name;file.parent.mkdir(exist_ok=True);file.write_text('')
     script=w.menu('', '172.16.30.25:7070');(target.parent/'addon.js').write_text(script)
@@ -40,7 +42,7 @@ def main():
     shutil.copyfile(str(ROOT/'tests/fixtures/title-form.html'),str(target.parents[1]/'send_titulo.hhvm'))
     shutil.copyfile(str(ROOT/'tests/fixtures/title-submit.php'),str(target.parents[1]/'ci-title-submit.php'))
     (folder/'bridge-secret.json').write_text(json.dumps({'secret':secret}))
-    Path('/etc/apache2/conf-enabled/ci-native-html.conf').write_text('AddType text/html .hhvm\n')
+    Path('/etc/apache2/conf-enabled/ci-native-html.conf').write_text('AddType text/html .hhvm\n<Files "menu.js.hhvm">\nForceType application/javascript\n</Files>\n')
     run('a2enmod','proxy','proxy_http','proxy_wstunnel','rewrite','filter','substitute');conf=Path('/etc/apache2/conf-available/vpscloud-evolution-addon.conf');conf.write_text(w.apache('7070'));run('a2enconf','vpscloud-evolution-addon');run('apache2ctl','-t');run('service','apache2','restart')
     fake="""const e=require('express'),c=require('crypto'),a=e();a.use(e.json());a.get('/',(r,s)=>s.json({version:'2.3.7'}));a.get('/instance/fetchInstances',(r,s)=>{if(r.headers.apikey!=='ci-only-global-key')return s.status(401).end();s.json([{id:'ci-fixture',name:'CI_ONLY_NO_PHONE',integration:'WHATSAPP-BAILEYS',connectionStatus:'close',token:'ci-instance-token',_count:{Message:0,Contact:0,Chat:0}}])});a.post('/message/sendText/:instance',(r,s)=>s.json({kind:'text',body:r.body}));a.post('/message/sendMedia/:instance',(r,s)=>s.json({kind:r.body.mediatype,body:r.body}));a.use((r,s)=>s.json({}));const server=a.listen(8080,'0.0.0.0');server.on('upgrade',(r,s)=>{if(!r.__vpscloudBridge||!r.url.startsWith('/socket.io/'))return s.destroy();const accept=c.createHash('sha1').update(r.headers['sec-websocket-key']+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');s.write('HTTP/1.1 101 Switching Protocols\\r\\nUpgrade: websocket\\r\\nConnection: Upgrade\\r\\nSec-WebSocket-Accept: '+accept+'\\r\\n\\r\\n');s.on('data',()=>s.destroy())})"""
     name='evolution_v2_api'
