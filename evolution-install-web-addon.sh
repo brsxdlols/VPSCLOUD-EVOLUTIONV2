@@ -5,17 +5,17 @@ umask 077
 PROJECT=/opt/vpscloud-evolution-v2
 STAGE=$(mktemp -d "$PROJECT/.web-addon.XXXXXX")
 mkdir -p "$STAGE/addon/evolution"
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/3b3505bde3c172f9b9bcc27d194287ae12946a0f/evolution-install-web-addon.py" -o "$STAGE/evolution-install-web-addon.py"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fda4f1d045955a8aca6ce569b1749205c591ae81/evolution-install-web-addon.py" -o "$STAGE/evolution-install-web-addon.py"
 printf '%s  %s\n' '16a826ffcf8827ae9cc34322f624b6c83b693184ac2b0dc215f496b42c7f263f' "$STAGE/evolution-install-web-addon.py" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/3b3505bde3c172f9b9bcc27d194287ae12946a0f/addon/evolution/index.php" -o "$STAGE/addon/evolution/index.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fda4f1d045955a8aca6ce569b1749205c591ae81/addon/evolution/index.php" -o "$STAGE/addon/evolution/index.php"
 printf '%s  %s\n' 'aaf6d18eb45b68f16a8acb9fe021eb188e01a96e8136efec28c0070b9225f09e' "$STAGE/addon/evolution/index.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/3b3505bde3c172f9b9bcc27d194287ae12946a0f/addon/evolution/native-menu.js" -o "$STAGE/addon/evolution/native-menu.js"
-printf '%s  %s\n' '708c67725a6e64017afff8c4cf61ed42b7442e4a4022b84b64e350a413a63fd2' "$STAGE/addon/evolution/native-menu.js" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/3b3505bde3c172f9b9bcc27d194287ae12946a0f/addon/evolution/reauth.php" -o "$STAGE/addon/evolution/reauth.php"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fda4f1d045955a8aca6ce569b1749205c591ae81/addon/evolution/native-menu.js" -o "$STAGE/addon/evolution/native-menu.js"
+printf '%s  %s\n' '3aeff2487d4aa093f9d2bc06777bc19597d594729f24356077f458df3ce9f293' "$STAGE/addon/evolution/native-menu.js" | sha256sum -c - >/dev/null
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fda4f1d045955a8aca6ce569b1749205c591ae81/addon/evolution/reauth.php" -o "$STAGE/addon/evolution/reauth.php"
 printf '%s  %s\n' '4396c3899330032c25c47baef19b81ac231b68658df1b7829450ab04de070a16' "$STAGE/addon/evolution/reauth.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/3b3505bde3c172f9b9bcc27d194287ae12946a0f/addon/evolution/title-photo.php" -o "$STAGE/addon/evolution/title-photo.php"
-printf '%s  %s\n' '7556b6e1d9bbf25d1737db3b15cc7986dcb35e6ae23cf6d8feeba62545063d45' "$STAGE/addon/evolution/title-photo.php" | sha256sum -c - >/dev/null
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/3b3505bde3c172f9b9bcc27d194287ae12946a0f/addon/evolution/title-photo.js" -o "$STAGE/addon/evolution/title-photo.js"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fda4f1d045955a8aca6ce569b1749205c591ae81/addon/evolution/title-photo.php" -o "$STAGE/addon/evolution/title-photo.php"
+printf '%s  %s\n' '4598d431fb916341477664d2d4d7d24e5d108bc1de1c89b9c2b16331fab67366' "$STAGE/addon/evolution/title-photo.php" | sha256sum -c - >/dev/null
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/fda4f1d045955a8aca6ce569b1749205c591ae81/addon/evolution/title-photo.js" -o "$STAGE/addon/evolution/title-photo.js"
 printf '%s  %s\n' '5082075764404ccc1bb504f8592b6531f1e1ee4b2835973120d7e0a9f5b300df' "$STAGE/addon/evolution/title-photo.js" | sha256sum -c - >/dev/null
 python3 "$STAGE/evolution-install-web-addon.py"
 rm -f "$STAGE/evolution-install-web-addon.py" "$STAGE/addon/evolution/index.php" "$STAGE/addon/evolution/native-menu.js" "$STAGE/addon/evolution/reauth.php"
