@@ -80,7 +80,7 @@ def main():
         db = json.loads(Path(os.environ['RECIBO_DB_CONFIG']).read_text())
     elif (DATA / 'database.php').exists() and (TARGET / 'common.php').exists():
         try:
-            command(['php', '-r', "require $argv[1]; $d=recibo_db(); if(!$d->query('SELECT nome FROM vpscloud_recibo_whatsapp LIMIT 0'))exit(1);", str(TARGET / 'common.php')])
+            command(['php', '-r', "require $argv[1]; $d=recibo_db(); $q=$d->query(\"SELECT nome FROM vpscloud_recibo_whatsapp WHERE nome='libzap'\"); if(!$q || $q->num_rows!==1)exit(1);", str(TARGET / 'common.php')])
             db = None  # Code-only update retains the dedicated account and schema.
         except subprocess.CalledProcessError:
             db = native_database((ROOT / 'admin/config.php').read_text(errors='replace'))
