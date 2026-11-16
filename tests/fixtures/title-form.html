@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset="iso-8859-1"></head><body>
+<form id="form" method="POST" action="/admin/ci-title-submit.php">
+<select id="tiposend" name="tiposend"><option value="wapp">WhatsApp Servidor</option><option value="email">Email</option></select>
+<div class="field" id="areatexto_wapp"><label>Mensagem<textarea id="texto_wapp" name="texto_wapp">Boleto para %cliente%</textarea></label></div>
+<select name="destino[]" multiple><option value="77" selected>77 - CI Recipient</option></select>
+<label><input id="envia_pdf" type="checkbox" name="envia_pdf" value="sim" checked>ENVIAR PDF</label><button id="enviar_msg" type="submit">Enviar</button>
+</form></body></html>

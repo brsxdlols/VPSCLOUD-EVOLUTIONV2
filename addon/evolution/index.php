@@ -1,6 +1,7 @@
 <?php
 $global=isset($_GET['globalkey']);
-$picker=isset($_GET['instances'])||$global;
+$photo=isset($_GET['titlephoto']);
+$picker=isset($_GET['instances'])||$global||$photo;
 if($picker){
  header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
  register_shutdown_function(function(){if(!defined('EVOLUTION_PICKER_READY')){while(ob_get_level())ob_end_clean();http_response_code(401);echo json_encode(['error'=>'Entre novamente pelo MK-AUTH.']);}});
@@ -13,6 +14,7 @@ function picker_reply($code,$body){header('Content-Type: application/json; chars
 if($picker && (session_status()!==PHP_SESSION_ACTIVE || (empty($_SESSION['mka_logado']) && empty($_SESSION['MKA_Logado']))))picker_reply(401,['error'=>'Entre novamente pelo MK-AUTH.']);
 if(session_status()!==PHP_SESSION_ACTIVE || (empty($_SESSION['mka_logado']) && empty($_SESSION['MKA_Logado']))){http_response_code(401);exit('Entre pelo MK-AUTH para acessar a Evolution.');}
 $config=json_decode(@file_get_contents('/opt/mk-auth/dados/evolution/bridge.json'),true);
+if($photo){require_once __DIR__.'/title-photo.php';evolution_title_photo($config);}
 if($global){
  if(!is_array($config)||empty($config['api_key']))picker_reply(503,['error'=>'Atualize o addon Evolution.']);
  $login=$_SESSION['MKA_Usuario']??'';if(!is_string($login)||$login==='')$login=$_SESSION['MM_Usuario']??'';

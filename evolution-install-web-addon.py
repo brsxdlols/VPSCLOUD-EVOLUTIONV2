@@ -46,6 +46,11 @@ ProxyPass "/admin/addons/evolution/ws/" "ws://127.0.0.1:PORTBASE" connectiontime
 ProxyPassReverse "/admin/addons/evolution/ws/" "ws://127.0.0.1:PORTBASE"
 ProxyPass "BASE" "http://127.0.0.1:PORTBASE" connectiontimeout=3 timeout=60
 ProxyPassReverse "BASE" "http://127.0.0.1:PORTBASE"
+<LocationMatch "^/admin/send_titulo\\.hhvm$">
+    AddOutputFilterByType SUBSTITUTE text/html
+    SubstituteMaxLineLength 2m
+    Substitute "s|</body>|<script src='/admin/addons/evolution/title-photo.js'></script></body>|ni"
+</LocationMatch>
 '''.replace('PORT',port).replace('BASE',base)
 
 def main():
@@ -58,6 +63,7 @@ def main():
     if not (monitor/'mkauth-bridge.cjs').is_file():raise ValueError('Instale primeiro os auxiliares atualizados do monitor.')
     run('php','-l',str(PACKAGE/'index.php'))
     run('php','-l',str(PACKAGE/'reauth.php'))
+    run('php','-l',str(PACKAGE/'title-photo.php'))
     info=json.loads(run('docker','inspect','evolution_v2_api'))[0]
     host,port=address(info,json.loads(run('ip','-j','route','get','1.1.1.1')))
     try:
@@ -87,12 +93,14 @@ def main():
     os.chown(str(target),0,gid);os.chmod(str(target),0o755)
     shutil.copyfile(str(PACKAGE/'index.php'),str(target/'index.php'));os.chmod(str(target/'index.php'),0o644)
     shutil.copyfile(str(PACKAGE/'reauth.php'),str(target/'reauth.php'));os.chmod(str(target/'reauth.php'),0o644)
+    for name in ['title-photo.php','title-photo.js']:
+        shutil.copyfile(str(PACKAGE/name),str(target/name));os.chmod(str(target/name),0o644)
     link=target/'addons.class.php'
     if not link.exists():link.symlink_to(ROOT/'include/addons.inc.hhvm')
     original=menu_path.read_text();temp=menu_path.with_suffix('.evolution-tmp')
     temp.write_text(menu(original,host));os.chmod(str(temp),menu_path.stat().st_mode&0o777);os.replace(str(temp),str(menu_path))
     try:
-        run('a2enmod','proxy','proxy_http','proxy_wstunnel')
+        run('a2enmod','proxy','proxy_http','proxy_wstunnel','filter','substitute')
         CONF.write_text(apache(port));os.chmod(str(CONF),0o644)
         run('a2enconf','vpscloud-evolution-addon')
         run('apache2ctl','-t')

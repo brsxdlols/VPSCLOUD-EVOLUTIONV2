@@ -138,3 +138,9 @@ Na configuração nativa **Opções → WhatsApp → Servidor**, o botão **Ver 
 No addon Evolution, **Ver chave global** exige novamente a senha do usuario conectado ao MK-AUTH. Reproduz o login nativo (SHA-256 da senha antes de `password_verify`/bcrypt) sobre o cadastro de usuario ativo, sem armazenar a senha, e limita a cinco tentativas por usuario a cada 15 minutos. A chave aparece por 30 segundos. Versoes sem a conexao nativa esperada bloqueiam a consulta em vez de dispensar a senha.
 
 No Recibo Evolution, **Ver instâncias do Evolution** mostra as instâncias da API local e o estado do WhatsApp. Selecionar preenche URL, nome e token; clique em **Salvar configurações** para persistir. Não depende de o gateway nativo estar configurado como Evolution2, não ativa envios e não altera a fila.
+
+## Foto no envio manual de titulos
+
+A janela **Enviar titulo** ganha a opcao **Anexar foto a mensagem**, para PNG/JPG/GIF de ate 2 MiB. O texto nativo vira a legenda e o checkbox **ENVIAR PDF** continua enviando o boleto. As variaveis e os destinatarios continuam sendo processados pelo MK-AUTH. Requer WhatsApp Servidor configurado como Evolution2 API local e o monitor atualizado. O Apache injeta o complemento somente nessa janela; os arquivos nativos do MK-AUTH nao sao alterados.
+
+Fotos preparadas ficam apenas na memoria da API, por ate 30 minutos, com limite de dez imagens. Fotos expiradas ou de outra instancia bloqueiam o envio da mensagem marcada, sem enviar o identificador interno ao cliente. Texto comum, envio automatico e documentos continuam no fluxo existente. Atualizar o auxiliar pode reiniciar brevemente a API, preservando os pareamentos.

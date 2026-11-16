@@ -14,11 +14,12 @@ function validateTarget(input,previous){
 }
 function redacted(c){return {label:c.label||'MK-AUTH / Evolution',docker:{chat:c.telegram_chat_id||'',hasToken:!!c.telegram_bot_token},instances:(c.instances||[]).map(x=>({name:x.name,enabled:x.enabled!==false,chat:x.telegram_chat_id||'',hasToken:!!x.telegram_bot_token}))}}
 async function send(target,text){if(!target.telegram_bot_token||!target.telegram_chat_id)throw Error('Configure token e chat primeiro');const r=await fetch('https://api.telegram.org/bot'+target.telegram_bot_token+'/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:target.telegram_chat_id,text}),signal:AbortSignal.timeout(10000)});const o=await r.json();if(!r.ok||!o.ok)throw Error('Telegram recusou o envio. Confira token, chat e acesso do bot.');}
-const express=require('express'),original=express.application.use;
+const express=require('express'),titleMedia=require('./manual-title-media.cjs');titleMedia.install(express);const original=express.application.use;
 express.application.use=function(...args){
  if(!this.__vpscloudMonitor){
   this.__vpscloudMonitor=true;
   original.call(this,bridge.middleware(dir));
+  original.call(this,'/ops/title-photo',titleMedia.router(express,auth));
   const router=express.Router();
   router.get('/',(req,res)=>res.type('html').send(fs.readFileSync(path.join(dir,'monitor.html'),'utf8')));
   router.use('/api',auth,express.json({limit:'32kb'}));
