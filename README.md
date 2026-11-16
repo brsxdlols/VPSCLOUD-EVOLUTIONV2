@@ -2,7 +2,7 @@
 
 O instalador oficial é `install-7070-replace-v1.sh`, com monitor no host, alertas Telegram e addon de recibos. Use o comando abaixo. O atalho antigo `patch-update-v237.sh` foi desativado; `install.sh` legado não faz parte deste fluxo.
 
-**Estado:** instalação e atualização controladas. O fluxo padrão 2.3.4 → 2.3.7 cria backup, ensaia as migrações numa cópia sem acesso externo e valida a versão real da API. Uma V1 reconhecida é removida com backup privado antes de criar a V2. Em V2 existente, a execução encerra os pareamentos ao concluir e exige novo QR, preservando instâncias e histórico.
+**Estado:** instalação e atualização controladas. O fluxo padrão 2.3.4 → 2.3.7 cria backup, ensaia as migrações numa cópia sem acesso externo e valida a versão real da API. Uma V1 reconhecida é removida com backup privado antes de criar a V2. Em V2 existente, preserva os pareamentos se a API já estiver na versão alvo e saudável. Uma troca real de versão exige novo QR ao concluir, preservando instâncias e histórico.
 
 ## Download e execução
 
@@ -22,11 +22,11 @@ Para execução reproduzível, substitua o nome da branch pelo SHA do commit pub
 - Recuperação de rollback ativo: se `evolution_v2_api` está parado e existe um único `evolution_v2_api_rollback_*` ativo na mesma rede, porta 7070, bancos e volumes, salva os dois inspects em backup privado e recupera os nomes sem parar/reiniciar o serviço ativo. O container parado é preservado com reinício automático desabilitado. Diferenças ou múltiplos candidatos interrompem para revisão. Depois segue o upgrade normal, com backup completo e novo QR.
 
 - Sem V2 e sem volumes V2 conhecidos: prepara PostgreSQL, Redis e Manager; cria uma única API com o entrypoint original, incluindo migrações.
-- V2 com nomes e topologia esperados: preserva bancos e instâncias; pergunta a chave e mantém a atual com Enter; aplica PATCH do Manager, atualiza a API compatível e instala auxiliares. Ao concluir, desconecta os pareamentos para novo QR. O patch falha se o bundle não for reconhecido.
+- V2 com nomes e topologia esperados: preserva bancos e instâncias; pergunta a chave e mantém a atual com Enter; aplica PATCH do Manager, atualiza a API compatível e instala auxiliares. Se houver troca real da versão da API, desconecta os pareamentos para novo QR. Se já estiver na versão alvo validada, preserva as sessões. O patch falha se o bundle não for reconhecido.
 - API parada, backend ausente, volumes órfãos, rede diferente ou nome de container não padrão: interrompe para recuperação supervisionada.
 - API 2.3.4 padrão: para a API, gera backup validado de PostgreSQL, Redis e imagem; testa 2.3.7 em rede interna com volumes separados antes da substituição. Em falha após substituir, restaura PostgreSQL e Redis antes de iniciar a API antiga. Se a restauração falhar, mantém a API parada e informa o backup para recuperação. Exige ao menos 4 GiB mais três vezes o tamanho dos dados livres; outras versões ou backends exigem revisão.
 
-O monitor preserva o entrypoint/comando efetivo existente. O upgrade usa o entrypoint original da imagem nova para executar suas migrações. O novo QR é obrigatório em cada execução sobre V2 existente; apenas `EVOLUTION_FORCE_RECONNECT=0` desativa explicitamente essa política. O backup preserva dados, mas não reativa credenciais revogadas pelo logout no WhatsApp. A versão é verificada pela API e pela imagem; baixe novamente o instalador antes de executar.
+O monitor preserva o entrypoint/comando efetivo existente. O upgrade usa o entrypoint original da imagem nova para executar suas migrações. A política padrão é automática: novo QR somente quando a versão real da API mudar. Atualizações de addons e auxiliares na mesma versão preservam os pareamentos. `EVOLUTION_FORCE_RECONNECT=1` força novo QR; `EVOLUTION_FORCE_RECONNECT=0` impede o logout mesmo no upgrade. O backup preserva dados, mas não reativa credenciais revogadas pelo logout no WhatsApp. A versão é verificada pela API e pela imagem; baixe novamente o instalador antes de executar.
 
 Nomes suportados: `evolution_v2_api`, `evolution_v2_postgres`, `evolution_v2_redis`. Diretório padrão: `/opt/vpscloud-evolution-v2`. A porta externa é 7070 (`EVOLUTION_PORT` em instalação nova). Para NAT use `EVOLUTION_SERVER_URL=http://ENDERECO_EXTERNO:PORTA`. O instalador não cria encaminhamento no roteador nem muda o MK-AUTH.
 
@@ -40,7 +40,7 @@ Quando você escolhe outra chave para uma V2 existente, somente a API é recriad
 
 O instalador inclui `/admin/addons/evolution/`, com abas **Manager** e **Alertas Telegram**, e atalhos no menu Provedor. O Apache faz proxy somente para a porta local da Evolution, incluindo WebSocket; basta o acesso web habitual do MK-AUTH, sem publicar outra porta. O login nativo emite um ticket HttpOnly de curta duracao, renovado enquanto a sessao estiver valida. Manager e monitor continuam pedindo a API Key Global. O segredo do proxy fica fora da pasta publica e nao e a chave da API.
 
-Para adicionar apenas o acesso web numa API 2.3.7 ja ativa, use `EVOLUTION_MODE=web-addon sh /root/install-evolution-v2-7070.sh` depois de baixar o instalador atualizado. Esse modo atualiza/recarrega os auxiliares e instala o proxy, sem upgrade de imagem, sem instalar recibos e sem solicitar logout. Pode reiniciar brevemente a API para carregar o auxiliar novo. O modo normal continua exigindo novo QR ao concluir uma atualizacao sobre V2.
+Para adicionar apenas o acesso web numa API 2.3.7 ja ativa, use `EVOLUTION_MODE=web-addon sh /root/install-evolution-v2-7070.sh` depois de baixar o instalador atualizado. Esse modo atualiza/recarrega os auxiliares e instala o proxy, sem upgrade de imagem, sem instalar recibos e sem solicitar logout. Pode reiniciar brevemente a API para carregar o auxiliar novo. O modo normal também preserva os pareamentos quando a API já está na versão alvo e saudável; novo QR é solicitado na troca real de versão.
 
 Requer Apache2 com proxy, proxy_http e proxy_wstunnel. HTTP e WebSocket usam caminhos internos separados no mesmo dominio. A configuracao e validada antes do reload; em erro, a configuracao anterior e restaurada. Nginx ou outros servidores exigem configurar o proxy equivalente, e o instalador informa essa limitacao. O monitor precisa estar habilitado. `EVOLUTION_INSTALL_WEB_ADDON=0` pula a instalacao/atualizacao dessa integracao. O comando `evolution-install-web-addon` reaplica apenas o addon/proxy quando os auxiliares novos ja estiverem carregados.
 
@@ -85,7 +85,7 @@ A reconexão faz esse backup e depois solicita **logout da sessão escolhida**, 
 
 ## Validação e limites
 
-No ambiente acompanhado, texto e boleto PDF enviados pelo sistema chegaram legíveis após novo pareamento com outro número na instância original. Isso associa a falha à sessão/conta anterior, mas não identifica o defeito criptográfico exato e não comprova que todo número foi recuperado. Não há reset automático de sessões no instalador.
+No ambiente acompanhado, texto e boleto PDF enviados pelo sistema chegaram legíveis após novo pareamento com outro número na instância original. Isso associa a falha à sessão/conta anterior, mas não identifica o defeito criptográfico exato e não comprova que todo número foi recuperado. Não há reset de sessões ao reaplicar o instalador na mesma versão saudável; upgrades reais seguem a política de novo QR descrita acima.
 
 ```sh
 node tests/installer.test.cjs
@@ -136,3 +136,5 @@ O auxiliar do monitor preserva explicitamente Entrypoint, Cmd e diretório de tr
 Na configuração nativa **Opções → WhatsApp → Servidor**, o botão **Ver instâncias do Evolution** consulta a API local e mostra o estado de conexão WhatsApp. **Usar esta instância** preenche servidor, nome e chave individual; clique em **Gravar** para salvar. A consulta exige a sessão do MK-AUTH; a lista não expõe chaves. Selecionar não conecta, desconecta nem envia mensagens.
 
 No addon Evolution, **Ver chave global** exige novamente a senha do usuario conectado ao MK-AUTH. Reproduz o login nativo (SHA-256 da senha antes de `password_verify`/bcrypt) sobre o cadastro de usuario ativo, sem armazenar a senha, e limita a cinco tentativas por usuario a cada 15 minutos. A chave aparece por 30 segundos. Versoes sem a conexao nativa esperada bloqueiam a consulta em vez de dispensar a senha.
+
+No Recibo Evolution, **Ver instâncias do Evolution** mostra as instâncias da API local e o estado do WhatsApp. Selecionar preenche URL, nome e token; clique em **Salvar configurações** para persistir. Não depende de o gateway nativo estar configurado como Evolution2, não ativa envios e não altera a fila.

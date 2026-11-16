@@ -307,13 +307,31 @@ upgrade_existing_api() {
   rm -f "$UPGRADE_HELPER"
 }
 force_existing_pairing_reset() {
-  if [ "${EVOLUTION_FORCE_RECONNECT:-1}" != 1 ]; then echo 'Reconexao obrigatoria desativada explicitamente pelo operador.'; return 0; fi
   RESET_HELPER=$(mktemp "$PROJECT_DIR/.reset-pairing.XXXXXX")
   curl -fsSL --retry 3 "https://raw.githubusercontent.com/brsxdlols/VPSCLOUD-EVOLUTIONV2/444b4ab1669ab5e842e30c091eb4421d7bc5dc9b/evolution-reset-pairing.py" -o "$RESET_HELPER"
   printf '%s  %s\n' 'a695f150bf055478fe2c2407222605e2dfc1bdb53de3678fa908cd7396ffb2b6' "$RESET_HELPER" | sha256sum -c - >/dev/null
   python3 "$RESET_HELPER"
   rm -f "$RESET_HELPER"
 }
+# PAIRING-POLICY-BEGIN
+apply_existing_pairing_policy() {
+  PAIRINGS_RESET=0
+  [ "$2" = 2.3.7 ] || { echo 'ERRO: versao final nao validada; pareamentos preservados.'; return 1; }
+  case "${EVOLUTION_FORCE_RECONNECT:-auto}" in
+    0) echo 'Reconexao desativada explicitamente pelo operador.'; return 0 ;;
+    1) ;;
+    auto)
+      if [ "$1" = "$2" ]; then
+        echo 'API ja estava na versao atual e foi validada. Pareamentos WhatsApp preservados.'
+        return 0
+      fi
+      ;;
+    *) echo 'ERRO: EVOLUTION_FORCE_RECONNECT deve ser auto, 0 ou 1.'; return 1 ;;
+  esac
+  force_existing_pairing_reset
+  PAIRINGS_RESET=1
+}
+# PAIRING-POLICY-END
 patch_chat_button() {
   CHAT_BUNDLE="$1"
   # Execute only the patcher, never the API entrypoint. The bind mount is staging.
@@ -390,7 +408,7 @@ if __name__=='__main__':
 RECOVER_ACTIVE_ROLLBACK
 }
 patch_existing_v2() {
-  echo "Evolution V2 existente detectada. Atualizacao com backup e novo QR obrigatorio ao concluir."
+  echo "Evolution V2 existente detectada. Verificando versao; pareamentos serao preservados se a API ja estiver atualizada."
   [ -s "$ENV_FILE" ] || { echo "ERRO: ENV ausente; nenhuma alteracao aplicada."; exit 1; }
   if [ "$(docker inspect --format '{{.State.Running}}' "$API_CONTAINER")" != true ] && docker ps --format '{{.Names}}' | grep -q '^evolution_v2_api_rollback_'; then
     recover_active_rollback
@@ -400,6 +418,7 @@ patch_existing_v2() {
   for dependency in "$PG_CONTAINER" "$REDIS_CONTAINER"; do
     [ "$(docker inspect --format '{{.State.Running}}' "$dependency")" = true ] || { echo "ERRO: dependencia parada ou ausente."; exit 1; }
   done
+  API_VERSION_BEFORE="$(docker exec "$API_CONTAINER" node -p "String(require('/evolution/package.json').version).replace(/^v/,'')")"
   choose_api_key "$(env_value AUTHENTICATION_API_KEY)"
   docker update --restart=always "$API_CONTAINER" "$PG_CONTAINER" "$REDIS_CONTAINER" >/dev/null
   [ -d "$MANAGER_DIR" ] || { echo "ERRO: Manager nao encontrado em $MANAGER_DIR."; exit 1; }
@@ -456,11 +475,16 @@ patch_existing_v2() {
   /usr/local/sbin/evolution-install-monitor --prepare-only
   upgrade_existing_api
   install_integrations
-  force_existing_pairing_reset
+  API_VERSION_AFTER="$(docker exec "$API_CONTAINER" node -e "(async()=>{const v=String(require('/evolution/package.json').version).replace(/^v/,'');if(v!=='2.3.7')process.exit(1);const r=await fetch('http://127.0.0.1:8080/instance/fetchInstances',{headers:{apikey:process.env.AUTHENTICATION_API_KEY},signal:AbortSignal.timeout(5000)});if(!r.ok||!Array.isArray(await r.json()))process.exit(1);console.log(v)})().catch(()=>process.exit(1))")"
+  apply_existing_pairing_policy "$API_VERSION_BEFORE" "$API_VERSION_AFTER"
   retire_legacy_v1
   echo "API: HTTP $CODE"
   install_daily_cleanup
-  echo "V2 atualizada e pareamentos encerrados. Conecte novamente pelo QR Code."
+  if [ "$PAIRINGS_RESET" = 1 ]; then
+    echo 'V2 atualizada e pareamentos encerrados. Conecte novamente pelo QR Code.'
+  else
+    echo 'V2 verificada e componentes atualizados. Pareamentos WhatsApp preservados; nenhum novo QR solicitado.'
+  fi
   exit 0
 }
 # WEB-ADDON-MODE-BEGIN

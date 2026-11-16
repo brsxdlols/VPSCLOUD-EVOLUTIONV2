@@ -37,4 +37,34 @@ sendRetro.onclick=async function(){const id=retroReceipt.value;if(!id||loadedRet
 document.getElementById('discard').onclick=function(){if(!confirm('Descartar os recibos da opção selecionada SEM ENVIAR? O histórico e os pagamentos serão preservados. Novos pagamentos continuarão entrando na fila.'))return;const d=payload('discard_pending');d.set('scope',document.getElementById('discardScope').value);d.set('confirm_discard','DESCARTAR');request(d,this).then(o=>{alert(o.message);location.reload()}).catch(()=>{})};
 document.getElementById('refresh').onclick=()=>location.reload();document.getElementById('clear').onclick=function(){if(confirm('Limpar somente o arquivo de log do addon?'))request(payload('clear_log'),this).then(()=>location.reload()).catch(()=>{})};
 document.querySelectorAll('[data-retry]').forEach(b=>b.onclick=()=>{if(!confirm('Confira o envio anterior. Recolocar pode gerar duplicidade se o cliente já recebeu. Deseja continuar?'))return;const d=payload('retry');d.set('id',b.dataset.retry);d.set('confirm_retry','1');request(d,b).then(()=>location.reload()).catch(()=>{})});
+</script>
+<style>
+.recibo-instance-dialog{box-sizing:border-box;width:620px;max-width:calc(100vw - 32px);padding:24px;border:1px solid #b9cedb;border-radius:12px;background:#fff;color:#253748;font:15px/1.5 system-ui}.recibo-instance-dialog::backdrop{background:#10283b66}.recibo-instance-dialog h2{font-size:21px;margin:0 0 12px}.recibo-instance-dialog button{font:inherit;padding:10px 16px;min-height:42px;border:0;border-radius:6px;background:#15895b;color:white;cursor:pointer}.recibo-instance-dialog button:disabled{opacity:.5}.recibo-instance-dialog .instance-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #d9e3ea}.recibo-instance-dialog .close-instances{margin-top:20px;background:#42647e}@media(max-width:520px){.recibo-instance-dialog .instance-row{align-items:stretch;flex-direction:column;gap:8px}}
+</style>
+<script>
+(function(){
+ const anchor=document.getElementById('importNative');if(!anchor)return;
+ const open=document.createElement('button');open.type='button';open.className='secondary';open.id='chooseEvolutionInstance';open.textContent='Ver instâncias do Evolution';anchor.insertAdjacentElement('afterend',open);
+ const hint=document.createElement('p');hint.className='hint';hint.textContent='Selecione a instância da Evolution local e depois clique em Salvar configurações.';open.insertAdjacentElement('afterend',hint);
+ open.onclick=async()=>{
+  if(document.querySelector('.recibo-instance-dialog'))return;
+  const dialog=document.createElement('dialog');dialog.className='recibo-instance-dialog';dialog.setAttribute('aria-label','Instâncias do Evolution');
+  const title=document.createElement('h2');title.textContent='Instâncias do Evolution';const message=document.createElement('p');message.setAttribute('role','status');message.textContent='Consultando a Evolution local…';const list=document.createElement('div');
+  const close=document.createElement('button');close.type='button';close.className='close-instances';close.textContent='Fechar';close.onclick=()=>dialog.close();dialog.append(title,message,list,close);dialog.onclose=()=>dialog.remove();document.body.append(dialog);dialog.showModal();
+  async function query(options){const r=await fetch('/admin/addons/evolution/index.php?instances=1',{credentials:'same-origin',cache:'no-store',...options});let data;try{data=await r.json();}catch{throw Error('Atualize o instalador para habilitar o addon Evolution e entre novamente no MK-AUTH.');}if(!r.ok)throw Error(data.error||'Não foi possível consultar a Evolution.');return data;}
+  try{
+   const data=await query();message.textContent=data.instances.length?'Selecione para preencher a conexão do Recibo. A seleção não salva nem envia mensagens.':'Nenhuma instância WhatsApp encontrada na Evolution local.';
+   for(const item of data.instances){
+    const row=document.createElement('div');row.className='instance-row';const label=document.createElement('span');label.textContent=item.name+' — '+(item.state==='open'?'● WhatsApp conectado':item.state==='connecting'?'◐ Conectando':'○ WhatsApp desconectado');label.style.color=item.state==='open'?'#087b40':'#a13927';
+    const use=document.createElement('button');use.type='button';use.textContent='Usar esta instância';use.onclick=async()=>{use.disabled=true;try{
+     const chosen=await query({method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf:data.csrf,name:item.name})});
+     const fields=document.getElementById('settings').elements;fields.api_url.value='http://'+chosen.address;fields.instance.value=chosen.name;fields.token.value=chosen.token;
+     for(const input of [fields.api_url,fields.instance,fields.token])for(const type of ['input','change'])input.dispatchEvent(new Event(type,{bubbles:true}));
+     feedback('Instância '+chosen.name+' preenchida — '+(chosen.state==='open'?'WhatsApp conectado.':'WhatsApp desconectado.')+' Clique em Salvar configurações.');dialog.close();
+    }catch(error){message.textContent=error.message;use.disabled=false;}};
+    row.append(label,use);list.append(row);
+   }
+  }catch(error){message.textContent=error.message;}
+ };
+})();
 </script></body></html>

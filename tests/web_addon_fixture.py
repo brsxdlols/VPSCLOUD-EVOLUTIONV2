@@ -23,6 +23,13 @@ def main():
     (target/'addons.class.php').write_text("<?php session_name('ci_native_session');session_start();")
     (target/'login-fixture.php').write_text("<?php session_name('ci_native_session');session_start();$_SESSION['MKA_Logado']=1;$_SESSION['MKA_Usuario']='ci-admin';header('Location: /admin/addons/evolution/');")
     (target.parents[1]/'config.php').write_text("<?php $conn=new mysqli('127.0.0.1','root','ci-db-only','mkradius',3307);")
+    receipt=target.parent/'Recibo_Evolution';receipt.mkdir()
+    for name in ['index.php','common.php']:shutil.copyfile(str(ROOT/'addon/Recibo_Evolution'/name),str(receipt/name))
+    (receipt/'addons.class.php').write_text("<?php session_name('ci_native_session');session_start();")
+    receipt_data=native/'dados/Recibo_Evolution';receipt_data.mkdir()
+    (receipt_data/'database.php').write_text("<?php return ['host'=>'127.0.0.1:3307','user'=>'root','password'=>'ci-db-only','name'=>'mkradius'];")
+    original_receipt=json.dumps({'api_url':'http://127.0.0.1:7070','instance':'KEEP_RECEIPT','token':'KEEP_RECEIPT_TOKEN','provider':'CI Provider','template':'KEEP_TEMPLATE','receipts_enabled':False,'enabled':False,'interval':5})
+    (receipt_data/'settings.json').write_text(original_receipt)
     for name in ['topo.php','menu.php','baixo.php']:(target.parents[1]/name).write_text('')
     for name in ['estilos/mk-auth.css','scripts/jquery.js','scripts/mk-auth.js']:
         file=target.parents[1]/name;file.parent.mkdir(exist_ok=True);file.write_text('')
@@ -54,6 +61,7 @@ def main():
         with patch.object(w,'run',side_effect=fixture_run):w.main()
         assert target.stat().st_mode&0o777==0o755
         run('node',str(ROOT/'tests/web_addon_browser.cjs'))
+        assert (receipt_data/'settings.json').read_text()==original_receipt,'Instance selection must not save or enable receipts'
         print('PASS Apache + PHP native-session entry point + pinned Manager browser integration')
     except Exception as error:
         print(str(error))
