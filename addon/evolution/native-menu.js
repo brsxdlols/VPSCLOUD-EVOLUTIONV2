@@ -1,9 +1,9 @@
 /* VPSCLOUD-EVOLUTION-BEGIN */
 ;(function(){
  if(window.__vpscloudEvolutionMenu)return;window.__vpscloudEvolutionMenu=true;
- if(typeof add_menu!=='undefined'&&typeof add_menu.provedor==='function'){
-  add_menu.provedor(JSON.stringify({plink:location.origin+'/admin/addons/evolution/',ptext:'Evolution API',picone:'fa fa-whatsapp'}));
-  add_menu.provedor(JSON.stringify({plink:location.origin+'/admin/addons/evolution/?view=monitor',ptext:'Evolution \xb7 Alertas Telegram',picone:'fa fa-bell'}));
+ if(typeof add_menu!=='undefined'&&typeof add_menu.opcoes==='function'){
+  add_menu.opcoes(JSON.stringify({plink:location.origin+'/admin/addons/evolution/',ptext:'Evolution API',picone:'fa fa-whatsapp'}));
+  add_menu.opcoes(JSON.stringify({plink:location.origin+'/admin/addons/evolution/?view=monitor',ptext:'Evolution \xb7 Alertas Telegram',picone:'fa fa-bell'}));
  }
  function fill(){
   if(!/\/admin\/conf_zap_serv\.hhvm$/.test(location.pathname))return;

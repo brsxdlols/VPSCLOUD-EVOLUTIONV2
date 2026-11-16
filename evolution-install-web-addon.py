@@ -32,6 +32,14 @@ def address(info,route):
     return str(ip)+':'+port,port
 
 def menu(source,host):
+    # Migrate the existing receipt shortcut as well during web-addon-only updates.
+    receipt=r'/\* VPSCLOUD-RECIBO-BEGIN \*/.*?/\* VPSCLOUD-RECIBO-END \*/'
+    def migrate(match):
+        block=match[0]
+        old=r"[ \t]*if\(typeof add_menu\.(?:financeiro|provedor|opcoes)==='function'\)add_menu\.(?:financeiro|provedor|opcoes)\(item\);\n?"
+        block=re.sub(old,'',block)
+        return block.replace('})();'," if(typeof add_menu.opcoes==='function')add_menu.opcoes(item);\n})();")
+    source=re.sub(receipt,migrate,source,flags=re.S)
     block=(PACKAGE/'native-menu.js').read_text(encoding='utf8').replace('__EVOLUTION_NATIVE_ADDRESS__',json.dumps(host))
     pattern=r'/\* VPSCLOUD-EVOLUTION-BEGIN \*/.*?/\* VPSCLOUD-EVOLUTION-END \*/\n?'
     return re.sub(pattern,lambda _:block,source,flags=re.S) if '/* VPSCLOUD-EVOLUTION-BEGIN */' in source else source.rstrip()+'\n'+block

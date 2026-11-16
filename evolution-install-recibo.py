@@ -44,8 +44,7 @@ def menu(source):
  if(typeof add_menu==='undefined'||window.__vpscloudReciboMenu)return;
  window.__vpscloudReciboMenu=true;
  var item=JSON.stringify({plink:window.location.origin+'/admin/addons/Recibo_Evolution/',ptext:'Recibos via WhatsApp',picone:'fa fa-whatsapp'});
- if(typeof add_menu.financeiro==='function')add_menu.financeiro(item);
- if(typeof add_menu.provedor==='function')add_menu.provedor(item);
+ if(typeof add_menu.opcoes==='function')add_menu.opcoes(item);
 })();
 /* VPSCLOUD-RECIBO-END */
 """
