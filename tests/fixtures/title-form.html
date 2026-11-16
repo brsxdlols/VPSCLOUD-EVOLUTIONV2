@@ -1,7 +1,7 @@
-<!doctype html><html><head><meta charset="iso-8859-1"></head><body>
+<!doctype html><html><head><meta charset="iso-8859-1"><style>form{max-width:960px;margin:auto}.field-body{display:flex}.field{flex:1;min-width:0}textarea{box-sizing:border-box;width:100%}.label{display:block}</style></head><body>
 <form id="form" method="POST" action="/admin/ci-title-submit.php">
 <select id="tiposend" name="tiposend"><option value="wapp">WhatsApp Servidor</option><option value="email">Email</option></select>
-<div class="field" id="areatexto_wapp"><label>Mensagem<textarea id="texto_wapp" name="texto_wapp">Boleto para %cliente%</textarea></label></div>
+<div class="field" id="areatexto_wapp"><label class="label" for="texto_wapp">Mensagem</label><div class="field-body"><div class="field"><div class="control"><textarea id="texto_wapp" name="texto_wapp" rows="10">Boleto para %cliente%</textarea><span id="native-emoji-control">Emoji</span></div></div></div></div>
 <select name="destino[]" multiple><option value="77" selected>77 - CI Recipient</option></select>
-<label><input id="envia_pdf" type="checkbox" name="envia_pdf" value="sim" checked>ENVIAR PDF</label><button id="enviar_msg" type="submit">Enviar</button>
-</form></body></html>
+<div class="field" id="div_pdf"><div class="field-body"><label><input id="envia_pdf" type="checkbox" name="envia_pdf" value="sim" checked>ENVIAR PDF</label></div></div><button id="enviar_msg" type="button">Enviar</button>
+</form><script>document.getElementById('enviar_msg').onclick=function(){localStorage.setItem('ci-native-caption',document.getElementById('texto_wapp').value);this.disabled=true;document.getElementById('form').submit();};</script></body></html>

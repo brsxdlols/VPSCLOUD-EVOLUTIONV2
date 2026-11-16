@@ -141,6 +141,8 @@ No Recibo Evolution, **Ver instâncias do Evolution** mostra as instâncias da A
 
 ## Foto no envio manual de titulos
 
-A janela **Enviar titulo** ganha a opcao **Anexar foto a mensagem**, para PNG/JPG/GIF de ate 2 MiB. O texto nativo vira a legenda e o checkbox **ENVIAR PDF** continua enviando o boleto. As variaveis e os destinatarios continuam sendo processados pelo MK-AUTH. Requer WhatsApp Servidor configurado como Evolution2 API local e o monitor atualizado. O Apache injeta o complemento somente nessa janela; os arquivos nativos do MK-AUTH nao sao alterados.
+A janela **Enviar titulo** ganha os seletores **Texto / Foto**, para PNG/JPG/GIF de ate 2 MiB. O texto nativo vira a legenda e o checkbox **ENVIAR PDF** continua enviando o boleto. As variaveis e os destinatarios continuam sendo processados pelo MK-AUTH. Requer WhatsApp Servidor configurado como Evolution2 API local e o monitor atualizado. O Apache injeta o complemento somente nessa janela; os arquivos nativos do MK-AUTH nao sao alterados.
 
 Fotos preparadas ficam apenas na memoria da API, por ate 30 minutos, com limite de dez imagens. Fotos expiradas ou de outra instancia bloqueiam o envio da mensagem marcada, sem enviar o identificador interno ao cliente. Texto comum, envio automatico e documentos continuam no fluxo existente. Atualizar o auxiliar pode reiniciar brevemente a API, preservando os pareamentos.
+
+O layout manual acompanha o padrao do MK-AUTH: seletores Texto/Foto, arquivo a esquerda, previa ao lado e legenda na coluna restante. O controle nativo de PDF permanece selecionavel junto. Texto, variaveis e controles de emoji sao preservados ao alternar os modos.
