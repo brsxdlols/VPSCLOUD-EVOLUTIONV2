@@ -16,12 +16,15 @@ function createStore({now=Date.now,ttl=30*60*1000,maxItems=10,maxBytes=2*1024*10
   items.set(token,{media,mimetype:mime,instance,expires,fileName:'foto.'+({'image/png':'png','image/jpeg':'jpg','image/gif':'gif'}[mime])});return {token,expires};
  }
  function rewrite(req){
-  if(req.method!=='POST'||!/^\/message\/sendText\/[^/?]+(?:\?|$)/.test(req.url)||typeof req.body?.text!=='string'||!req.body.text.includes(PREFIX))return;
-  clean();const text=req.body.text,match=text.match(/\[VPSCLOUD_TITLE_PHOTO:([a-f0-9]{48})\]\s*$/);
-  const photo=match&&items.get(match[1]);let instance='';try{instance=decodeURIComponent(req.url.split('?')[0].slice('/message/sendText/'.length))}catch{}
+  const route=req.url.match(/^\/message\/(sendText|sendMedia)\/([^/?]+)(?:\?|$)/);const field=route?.[1]==='sendMedia'?'caption':'text';
+  if(req.method!=='POST'||!route||typeof req.body?.[field]!=='string'||!req.body[field].includes(PREFIX))return;
+  clean();const text=req.body[field],match=text.match(/\[VPSCLOUD_TITLE_PHOTO:([a-f0-9]{48})\]\s*$/);
+  const photo=match&&items.get(match[1]);let instance='';try{instance=decodeURIComponent(route[2])}catch{}
   if(!photo||photo.instance!==instance||text.indexOf(PREFIX)!==match.index){const error=Error('Foto temporaria indisponivel. Reabra o envio manual e anexe a foto novamente.');error.status=409;throw error}
+  const caption=text.slice(0,match.index).replace(/\r?\n$/,'');
+  if(route[1]==='sendMedia'){req.body={...req.body,caption};return;}
   const {text:ignored,linkPreview,...rest}=req.body;
-  req.body={...rest,mediatype:'image',mimetype:photo.mimetype,caption:text.slice(0,match.index).replace(/\r?\n$/,''),media:photo.media,fileName:photo.fileName};
+  req.body={...rest,mediatype:'image',mimetype:photo.mimetype,caption,media:photo.media,fileName:photo.fileName};
   req.url=req.url.replace('/message/sendText/','/message/sendMedia/');
  }
  return {put,rewrite,clean};

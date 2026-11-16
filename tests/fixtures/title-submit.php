@@ -7,6 +7,6 @@ $out=['titles'=>$_POST['destino']??[],'messages'=>[]];
 if(($_SERVER['REQUEST_METHOD']??'')==='POST'){
  $caption=str_replace('%cliente%','CI Recipient',$_POST['texto_wapp']??'');
  $out['messages'][]=ci_send('/message/sendText/CI_ONLY_NO_PHONE',['number'=>'5511999999999','text'=>$caption]);
- if(($_POST['envia_pdf']??'')==='sim')$out['messages'][]=ci_send('/message/sendMedia/CI_ONLY_NO_PHONE',['number'=>'5511999999999','mediatype'=>'document','mimetype'=>'application/pdf','media'=>'ci-only-pdf','fileName'=>'boleto.pdf']);
+ if(($_POST['envia_pdf']??'')==='sim')$out['messages'][]=ci_send('/message/sendMedia/CI_ONLY_NO_PHONE',['number'=>'5511999999999','mediatype'=>'document','mimetype'=>'application/pdf','media'=>'ci-only-pdf','fileName'=>'boleto.pdf','caption'=>$caption]);
 }
 ?><!doctype html><meta charset="utf-8"><pre id="result"><?=htmlspecialchars(json_encode($out),ENT_QUOTES,'UTF-8')?></pre>

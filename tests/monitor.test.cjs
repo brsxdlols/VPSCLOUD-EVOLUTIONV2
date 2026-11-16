@@ -22,5 +22,6 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  const tagged={number:'5511999999999',text:'Boleto do cliente\n[VPSCLOUD_TITLE_PHOTO:'+photo.token+']',delay:100};assert.equal((await post('/message/sendText/MKAUTH',tagged,'wrong')).status,401);const image=await (await post('/message/sendText/MKAUTH',tagged)).json();assert.equal(image.kind,'image');assert.equal(image.body.caption,'Boleto do cliente');assert.equal(image.body.media,png);assert.equal(image.body.delay,100);assert.equal(image.body.number,tagged.number);assert.ok(!('text' in image.body));
  assert.equal((await post('/message/sendText/OTHER',tagged)).status,409);
  const pdf={number:tagged.number,mediatype:'document',media:'ci-only-pdf',caption:'PDF'};assert.deepEqual((await (await post('/message/sendMedia/MKAUTH',pdf)).json()).body,pdf);
+ const taggedPdf=await (await post('/message/sendMedia/MKAUTH',{...pdf,caption:tagged.text})).json();assert.equal(taggedPdf.body.caption,'Boleto do cliente');assert.equal(taggedPdf.body.media,pdf.media);assert.equal(taggedPdf.kind,'document');
  console.log('PASS manual photo conversion; normal text and PDF preserved; foreign instance blocked');
 }finally{server.kill();fs.rmSync(tmp,{recursive:true,force:true})}})().catch(e=>{console.error(e.message);process.exitCode=1});
