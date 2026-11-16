@@ -114,7 +114,8 @@ def attempt(state, key, command, now):
 
 def inspect_health(config, state, now):
     issues = []
-    if run(['docker', 'info'], timeout=8)[0] != 0:
+    if (run(['docker', 'info', '--format', '{{.ServerVersion}}'], timeout=8)[0] != 0
+            and run(['docker', 'version', '--format', '{{.Server.Version}}'], timeout=12)[0] != 0):
         # A live but unresponsive dockerd is not restarted automatically: that
         # could interrupt unrelated MK-AUTH services. Alert for operator action.
         if run(['pgrep', '-x', 'dockerd'])[0] == 1:
@@ -170,18 +171,23 @@ def update_one(config, state, issues, now, boot_grace=False):
     if config.get('_phone_line'):
         label += '\n' + config['_phone_line']
     if issues:
-        state['failures'] = state.get('failures', 0) + 1
         key = ', '.join(sorted(issues))
+        state['failures'] = state.get('failures', 0) + 1 if state.get('failure_key') == key else 1
+        state['failure_key'] = key
         log_event(syslog.LOG_WARNING, 'Evolution: ' + key)
-        due = (key != state.get('alert_key') or now - state.get('last_alert', 0) >= 1800)
+        disk_only = all(x.startswith('DISCO_') for x in issues)
+        repeat = 21600 if disk_only else 1800
+        due = (key != state.get('alert_key') or now - state.get('last_alert', 0) >= repeat)
         if state['failures'] >= 2 and due and not boot_grace:
             target = dict(config)
             target['_alert_image'] = '' if all(x.startswith('DISCO_') for x in issues) else 'whatsapp' if all(x.startswith(('WHATSAPP_', 'INSTANCIA_')) for x in issues) else 'critical'
-            if notify(target, label + '\nALERTA: ' + key + '\nCobrancas podem nao estar sendo enviadas. Verifique a instancia.'):
+            guidance = ('Disco acima do limite de atencao. Revise o uso de espaco; este aviso nao indica desconexao do WhatsApp.' if issues == ['DISCO_ATENCAO'] else 'Espaco em disco em nivel critico. Verifique o armazenamento do servidor.' if disk_only else 'Cobrancas podem nao estar sendo enviadas. Verifique a instancia e o servidor.')
+            if notify(target, label + '\nALERTA: ' + key + '\n' + guidance):
                 state['alert_key'] = key
                 state['last_alert'] = now
     else:
         state['failures'] = 0
+        state['failure_key'] = ''
         if state.get('alert_key'):
             target = dict(config)
             disk_only = all(x.startswith('DISCO_') for x in state['alert_key'].split(', '))
@@ -195,7 +201,7 @@ def update_one(config, state, issues, now, boot_grace=False):
 def update_alerts(config, state, issues, now, boot_grace=False):
     state.update(last_check=now, issues=sorted(issues), healthy=not bool(issues))
     conditions = state.setdefault('conditions', {})
-    global_issues = [x for x in issues if not x.startswith(('WHATSAPP_', 'INSTANCIA_'))]
+    global_issues = [x for x in issues if not x.startswith(('WHATSAPP_', 'INSTANCIA_', 'DISCO_'))]
     general = dict(config)
     disk = state.get('disk', {})
     if disk and any(x.startswith('DISCO_') for x in issues):
@@ -205,6 +211,7 @@ def update_alerts(config, state, issues, now, boot_grace=False):
     if lines:
         general['_phone_line'] = 'Ultimos numeros identificados:\n' + '\n'.join(lines)
     update_one(general, conditions.setdefault('docker_api', {}), global_issues, now, boot_grace)
+    update_one(general, conditions.setdefault('disk', {}), [x for x in issues if x.startswith('DISCO_')], now, boot_grace)
     if global_issues:
         return
     for item in config.get('instances', []):

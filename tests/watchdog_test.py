@@ -15,6 +15,31 @@ spec.loader.exec_module(installer)
 
 
 class WatchdogTests(unittest.TestCase):
+    def test_disk_cannot_confirm_a_transient_docker_failure(self):
+        state={}
+        with patch.object(w,'notify',return_value=True) as send:
+            for now in [1000,1060]:w.update_alerts({},state,['DISCO_ATENCAO'],now)
+            self.assertEqual(send.call_count,1)
+            self.assertNotIn('Cobrancas podem',send.call_args[0][1])
+            w.update_alerts({},state,['DISCO_ATENCAO','DOCKER_INDISPONIVEL'],1120)
+            self.assertEqual(send.call_count,1)
+            w.update_alerts({},state,['DISCO_ATENCAO'],1180)
+            self.assertEqual(send.call_count,1)
+    def test_new_failure_needs_its_own_confirmation(self):
+        state={}
+        with patch.object(w,'notify',return_value=True) as send:
+            w.update_one({},state,['API_SEM_RESPOSTA'],1000)
+            w.update_one({},state,['DOCKER_INDISPONIVEL'],1060)
+            self.assertEqual(send.call_count,0)
+            w.update_one({},state,['DOCKER_INDISPONIVEL'],1120)
+            self.assertEqual(send.call_count,1)
+    def test_docker_timeout_is_confirmed_by_second_probe(self):
+        def response(args,**kwargs):
+            if args[:2]==['docker','info']:return 124,''
+            if args[:2]==['docker','version']:return 0,'18.09.1'
+            if args[:2]==['docker','inspect']:return 0,'true'
+            return 0,json.dumps({'api':200,'instances':[]})
+        with patch.object(w,'run',side_effect=response):self.assertEqual(w.inspect_health({}, {},1000),[])
     def setUp(self):
         logger = patch.object(w, 'log_event')
         logger.start()
