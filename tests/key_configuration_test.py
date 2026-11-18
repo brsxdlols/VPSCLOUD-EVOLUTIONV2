@@ -30,7 +30,7 @@ class KeyConfigurationTests(unittest.TestCase):
         def command(args):
             calls.append(args)
             return json.dumps([info]) if args[:2]==['docker','inspect'] else 'fake-container-id'
-        with patch.object(m,'PROJECT',root),patch.object(m,'MONITOR',monitor),patch.object(m,'RECEIPT',receipt),patch.object(m,'MAINTENANCE',root/'maintenance'),patch.object(m.os,'geteuid',return_value=0),patch.object(m,'command',side_effect=command),patch.object(m,'configure_docker_boot'),patch.object(m.sys,'argv',['helper','--key-only']),patch.dict(os.environ,{'EVOLUTION_API_KEY':'new-key-123'}),patch.object(m.subprocess,'run',return_value=SimpleNamespace(returncode=0 if healthy else 1)),patch.object(m.time,'sleep'):
+        with patch.object(m,'PROJECT',root),patch.object(m,'MONITOR',monitor),patch.object(m,'RECEIPT',receipt),patch.object(m,'MAINTENANCE',root/'maintenance'),patch.object(m.os,'geteuid',return_value=0),patch.object(m,'command',side_effect=command),patch.object(m,'configure_docker_boot'),patch.object(m.sys,'argv',['helper','--key-only']),patch.dict(os.environ,{'EVOLUTION_API_KEY':'new-key-123'}),patch.object(m.subprocess,'run',return_value=SimpleNamespace(returncode=0 if healthy else 1)),patch.object(m.time,'sleep'),patch.object(m,'wait_monitor_ready',side_effect=None if healthy else ValueError('test health failure')):
             if healthy:self.assertEqual(m.main(),0)
             else:
                 with self.assertRaises(ValueError):m.main()

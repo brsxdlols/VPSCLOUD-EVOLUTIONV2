@@ -120,6 +120,22 @@ def configure_docker_boot():
     command(['docker', 'update', '--restart=always'] + ['evolution_v2_postgres', 'evolution_v2_redis', API])
 
 
+def wait_monitor_ready(probe, timeout=600):
+    deadline=time.monotonic()+timeout
+    notice=0
+    while time.monotonic()<deadline:
+        try:
+            result=subprocess.run(['docker','exec',API,'node','-e',probe],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=15)
+            if result.returncode==0:return
+        except subprocess.TimeoutExpired:
+            pass  # Slow startup/probe is not proof that the replacement failed.
+        now=time.monotonic()
+        if now>=notice:
+            print('Aguardando inicializacao da API e do painel; prazo restante: %s s.'%max(0,int(deadline-now)),flush=True)
+            notice=now+30
+        if now<deadline:time.sleep(min(3,deadline-now))
+    raise ValueError('API ou painel nao validou em 10 minutos; retomando container anterior. Confira os logs do container monitor_failed.')
+
 def main():
     if os.geteuid() != 0:
         raise ValueError('Execute como root')
@@ -175,15 +191,8 @@ def main():
             command(args)
             paths = ['/'] if key_only else ['/', '/monitor/']
             probe = "(async()=>{for(const p of "+json.dumps(paths)+"){let r=await fetch('http://127.0.0.1:8080'+p,{signal:AbortSignal.timeout(3000)});if(r.status!==200)process.exit(1)}let a=await fetch('http://127.0.0.1:8080/instance/fetchInstances',{headers:{apikey:process.env.AUTHENTICATION_API_KEY},signal:AbortSignal.timeout(3000)});if(a.status!==200)process.exit(1)})().catch(()=>process.exit(1))"
-            ready = False
-            for attempt in range(40):
-                result = subprocess.run(['docker', 'exec', API, 'node', '-e', probe], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
-                if result.returncode == 0:
-                    ready = True
-                    break
-                time.sleep(3)
-            if not ready:
-                raise ValueError('API ou painel nao iniciou; retomando container anterior')
+            print('Validando inicializacao da API e do painel (ate 10 minutos)...',flush=True)
+            wait_monitor_ready(probe)
             for path,content in updates.items(): write_preserving(path,content)
         except Exception:
             for path,content in originals.items():
