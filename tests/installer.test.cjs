@@ -40,7 +40,9 @@ for(const [scenario,message] of [['diagnose',''],['v1','volume preexistente'],['
   for(const dep of ['curl','openssl','python3'])fs.writeFileSync(path.join(bin,dep),'#!/bin/sh\necho UNEXPECTED_MUTATION >&2\nexit 97\n',{mode:0o755});
   const project=path.join(dir,'project');
   if(['api-stopped','wrong-network'].includes(scenario)){fs.mkdirSync(project);fs.writeFileSync(path.join(project,'evolution-v2.env'),'TEST=1\n')}
-  const script=source.replaceAll('/opt/vpscloud-evolution-v2',project).replaceAll('/root/evolution-v1-backups',path.join(dir,'legacy')).replaceAll('/run/lock/vpscloud-evolution-install.lock',path.join(dir,'lock'));
+  // Daemon startup is exercised separately by docker_preflight_test.py; these
+  // fixtures prohibit Python mutations while checking ambiguous deployments.
+  const script=source.replace(/# DOCKER-PREFLIGHT-BEGIN\n[\s\S]*?# DOCKER-PREFLIGHT-END\n/,'').replaceAll('/opt/vpscloud-evolution-v2',project).replaceAll('/root/evolution-v1-backups',path.join(dir,'legacy')).replaceAll('/run/lock/vpscloud-evolution-install.lock',path.join(dir,'lock'));
   const file=path.join(dir,'install.sh');fs.writeFileSync(file,script);const log=path.join(dir,'calls');
   const r=cp.spawnSync('sh',[file],{encoding:'utf8',env:{...process.env,PATH:bin+':'+process.env.PATH,MOCK_LOG:log,SCENARIO:scenario,EVOLUTION_MODE:scenario==='diagnose'?'diagnose':'apply'}});
   assert.equal(r.status,scenario==='diagnose'?0:1,r.stdout+r.stderr);assert.ok(r.stdout.includes(message),r.stdout+r.stderr);
