@@ -38,6 +38,34 @@ for dep in curl openssl sed awk grep find od sha256sum mktemp python3; do
   command -v "$dep" >/dev/null 2>&1 || { echo "ERRO: dependencia ausente: $dep"; exit 1; }
 done
 [ "$(id -u)" = 0 ] || { echo "ERRO: execute como root."; exit 1; }
+# DOCKER-PREFLIGHT-BEGIN
+python3 - <<'DOCKER_PREFLIGHT'
+import os, subprocess, sys, time
+from pathlib import Path
+def run(args,timeout=8):
+    try:return subprocess.run(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=timeout).returncode
+    except (OSError,subprocess.TimeoutExpired):return 124
+def ready():return run(['docker','info','--format','{{.ServerVersion}}'])==0
+if ready():raise SystemExit(0)
+if os.environ.get('DOCKER_HOST','') not in ('','unix:///var/run/docker.sock') or os.environ.get('DOCKER_CONTEXT','default') not in ('','default'):
+    sys.exit('ERRO: Docker remoto/contexto personalizado indisponivel. Confira a conexao; nenhum servico local foi alterado.')
+process=run(['pgrep','-x','dockerd'])
+if process==1:
+    if Path('/run/systemd/system').is_dir():command=['systemctl','start','docker']
+    elif Path('/etc/init.d/docker').is_file():command=['/etc/init.d/docker','start']
+    else:sys.exit('ERRO: Docker parado e servico nao identificado. Inicie o Docker e execute novamente.')
+    print('Docker parado. Iniciando o servico...',flush=True)
+    run(command,timeout=45)
+elif process!=0:sys.exit('ERRO: nao foi possivel verificar o processo Docker. Nenhuma instalacao iniciada.')
+else:print('Docker em execucao, aguardando resposta do daemon...',flush=True)
+for attempt in range(6):
+    if ready():
+        print('Docker disponivel. Continuando instalacao.')
+        raise SystemExit(0)
+    if attempt<5:time.sleep(2)
+sys.exit('ERRO: Docker continua indisponivel. Verifique o servico e /var/run/docker.sock. Instalacao interrompida antes de alterar containers ou solicitar a API Key.')
+DOCKER_PREFLIGHT
+# DOCKER-PREFLIGHT-END
 case "$API_PORT" in ''|*[!0-9]*) echo "ERRO: porta invalida."; exit 1 ;; esac
 [ "$API_PORT" -ge 1 ] && [ "$API_PORT" -le 65535 ] || exit 1
 LEGACY_V1=0

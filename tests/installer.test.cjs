@@ -12,6 +12,7 @@ function test(name,fn){fn();passed++;console.log('PASS',name)}
 const mock=`#!/bin/sh
 printf '%s\\n' "$*" >> "$MOCK_LOG"
 case "$1 $2" in
+ 'info --format') exit 0;;
  'container inspect')
   case "$SCENARIO:$3" in
    v1:evolution_api|api-stopped:evolution_v2_api|missing-env:evolution_v2_api|wrong-network:evolution_v2_api|partial:evolution_v2_postgres) exit 0;;

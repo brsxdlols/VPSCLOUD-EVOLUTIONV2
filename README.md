@@ -150,3 +150,5 @@ O layout manual acompanha o padrao do MK-AUTH: seletores Texto/Foto, arquivo a e
 ### Espaco dos backups de imagem
 
 Apos concluir e validar a instalacao ou atualizacao, o instalador remove somente `backups/session-*/api-image.tar`. A imagem pode ser copiada temporariamente durante um upgrade para permitir rollback em caso de falha; a limpeza nao ocorre quando a instalacao falha. Dumps PostgreSQL, Redis, sessoes, configuracoes e demais backups sao preservados. O manifesto de checksums e ajustado e sua versao anterior e guardada. A limpeza nao remove imagens instaladas no Docker e nao desconecta o WhatsApp.
+
+O instalador verifica o daemon Docker antes de inventariar containers, pedir a API Key ou baixar imagens. Se o daemon local estiver parado, tenta iniciar o servico via systemd ou SysV e aguarda a resposta. Um daemon em execucao mas sem resposta nao e reiniciado automaticamente. Se continuar indisponivel, a instalacao e interrompida.
