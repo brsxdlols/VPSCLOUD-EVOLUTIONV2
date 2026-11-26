@@ -11,7 +11,7 @@ const assert=require('assert/strict');
  r=await page.request.get('http://127.0.0.1/admin/addons/evolution/index.php?globalkey=1');assert.equal(r.status(),401);
  await page.goto('http://127.0.0.1/admin/addons/evolution/login-fixture.php');
  await page.locator('iframe').waitFor();
- await page.locator('#ci-options').click();await page.locator('#ci-options-items a').waitFor({state:'visible'});assert.equal(await page.locator('#ci-options-items a').textContent(),'Servidor WhatsApp');
+ await page.getByRole('link',{name:'Voltar ao MK-AUTH',exact:true}).waitFor();
  const navHeights=await page.locator(".evolution-tabs>a,.evolution-tabs>button").evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().height));assert.equal(new Set(navHeights).size,1);assert.ok(navHeights[0]>=40);
  const keyEndpoint='http://127.0.0.1/admin/addons/evolution/index.php?globalkey=1';
  const challenge=await (await page.request.get(keyEndpoint)).json();assert.equal(challenge.user,'ci-admin');assert.ok(!JSON.stringify(challenge).includes('ci-only-global-key'));
@@ -24,10 +24,20 @@ const assert=require('assert/strict');
  const frame=page.frameLocator('iframe');await frame.locator('input[type=password]').fill('ci-only-global-key');
  await frame.getByRole('button',{name:/login/i}).click();
  await frame.getByText('CI_ONLY_NO_PHONE',{exact:true}).waitFor({timeout:20000});
+ async function checkPageFit(width,height){
+  await page.setViewportSize({width,height});
+  const geometry=await page.locator('iframe').evaluate(el=>{const r=el.getBoundingClientRect();return {x:r.x,right:r.right,bottom:r.bottom,height:r.height,viewport:innerWidth,viewHeight:innerHeight,overflow:getComputedStyle(document.documentElement).overflowY};});
+  assert.equal(geometry.overflow,'hidden');assert.ok(Math.abs(geometry.x)<1);assert.ok(geometry.right<=width+1);assert.ok(Math.abs(geometry.bottom-height)<2);assert.ok(geometry.height>height*.7);
+  if(width<768||height<=500){await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('link',{name:'Voltar ao MK-AUTH',exact:true}).waitFor({state:'visible'});await page.getByRole('button',{name:'Menu',exact:true}).click();}
+  const child=page.frames().find(f=>f.url().includes('/app/'));
+  assert.ok(await child.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Application must not overflow horizontally');
+ }
+ await checkPageFit(1280,800);await checkPageFit(390,844);await checkPageFit(844,390);await page.setViewportSize({width:1280,height:800});
  const inside=page.frames().find(f=>f.url().includes('/app/manager'));
  const ws=await inside.evaluate(()=>new Promise(resolve=>{const ws=new WebSocket('ws://127.0.0.1:7070/socket.io/');const t=setTimeout(()=>resolve(false),7000);ws.onopen=()=>{clearTimeout(t);ws.close();resolve(true)};ws.onerror=()=>{clearTimeout(t);resolve(false)}}));assert.ok(ws,'same-origin WebSocket proxy failed');
  await page.getByRole('link',{name:'Alertas Telegram',exact:true}).click();
  const monitor=page.frameLocator('iframe');await monitor.locator('#key').fill('ci-only-global-key');await monitor.locator('#enter').click();await monitor.locator('#panel').waitFor({state:'visible',timeout:15000});
+ await checkPageFit(390,844);await monitor.locator('#save').scrollIntoViewIfNeeded();assert.equal(await page.evaluate(()=>scrollY),0);await checkPageFit(1280,800);
  await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'172.16.30.25:7070');assert.equal(await page.locator('[name=wapp_login]').inputValue(),'KEEP_INSTANCE');assert.equal(await page.locator('[name=wapp_pass]').inputValue(),'KEEP_TOKEN');
  await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?legacy=1');assert.equal(await page.locator('[name=wapp_servidor]').inputValue(),'evolution_api');
  await page.goto('http://127.0.0.1/admin/conf_zap_serv.hhvm?existing=1');assert.equal(await page.locator('[name=wapp_host]').inputValue(),'192.168.99.10:8080');
