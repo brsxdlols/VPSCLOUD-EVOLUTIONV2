@@ -31,8 +31,15 @@ const assert=require('assert/strict');
   if(width<768||height<=500){await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('link',{name:'Voltar ao MK-AUTH',exact:true}).waitFor({state:'visible'});await page.getByRole('button',{name:'Menu',exact:true}).click();}
   const child=page.frames().find(f=>f.url().includes('/app/'));
   assert.ok(await child.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Application must not overflow horizontally');
+  if(child.url().includes('/manager')){
+   const bounds=await child.getByText('CI_ONLY_NO_PHONE',{exact:true}).evaluate(el=>{const chain=[];for(let p=el;p&&p.id!=='root';p=p.parentElement){const r=p.getBoundingClientRect();chain.push({tag:p.tagName,classes:p.className,left:r.left,right:r.right,width:r.width});}return {viewport:innerWidth,chain};});
+   assert.ok(bounds.chain.every(r=>r.left>=-1&&r.right<=bounds.viewport+1),'Manager card exceeds viewport '+width+' '+JSON.stringify(bounds));
+   for(const button of await child.getByRole('button',{name:/delete/i}).all()){
+    const b=await button.boundingBox();if(b)assert.ok(b.x>=-1&&b.x+b.width<=width+1,'Delete button must be fully visible');
+   }
+  }
  }
- await checkPageFit(1280,800);await checkPageFit(390,844);await checkPageFit(844,390);await page.setViewportSize({width:1280,height:800});
+ await checkPageFit(1280,800);await checkPageFit(320,740);await checkPageFit(390,844);await checkPageFit(400,844);await checkPageFit(844,390);await page.setViewportSize({width:1280,height:800});
  const inside=page.frames().find(f=>f.url().includes('/app/manager'));
  const ws=await inside.evaluate(()=>new Promise(resolve=>{const ws=new WebSocket('ws://127.0.0.1:7070/socket.io/');const t=setTimeout(()=>resolve(false),7000);ws.onopen=()=>{clearTimeout(t);ws.close();resolve(true)};ws.onerror=()=>{clearTimeout(t);resolve(false)}}));assert.ok(ws,'same-origin WebSocket proxy failed');
  await page.getByRole('link',{name:'Alertas Telegram',exact:true}).click();
