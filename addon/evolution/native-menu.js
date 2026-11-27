@@ -22,7 +22,9 @@
     const title=document.createElement('h2');title.textContent='Inst\xe2ncias do Evolution';
     const message=document.createElement('p');message.setAttribute('role','status');message.textContent='Consultando WhatsApp\u2026';
     const list=document.createElement('div');const close=document.createElement('button');close.type='button';close.textContent='Fechar';close.className='button';close.onclick=()=>dialog.close();
-    dialog.append(title,message,list,close);document.body.append(dialog);dialog.onclose=()=>dialog.remove();dialog.showModal();
+    const create=document.createElement('a');create.href='/admin/addons/evolution/?view=manager';create.target='_blank';create.rel='noopener noreferrer';create.className='button is-info';create.textContent='Criar/Conectar WhatsApp';create.setAttribute('aria-label','Criar/Conectar WhatsApp (nova aba)');
+    const actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin-top:16px';actions.append(create,close);
+    dialog.append(title,message,list,actions);document.body.append(dialog);dialog.onclose=()=>dialog.remove();dialog.showModal();
     const endpoint='/admin/addons/evolution/index.php?instances=1';
     async function request(options){const r=await fetch(endpoint,{credentials:'same-origin',cache:'no-store',...options});let data;try{data=await r.json();}catch{throw Error('Sess\xe3o expirada ou resposta inv\xe1lida. Entre novamente no MK-AUTH.');}if(!r.ok)throw Error(data.error||'Falha na consulta.');return data;}
     try{
