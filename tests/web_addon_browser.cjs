@@ -26,6 +26,9 @@ const assert=require('assert/strict');
  await frame.getByText('CI_ONLY_NO_PHONE',{exact:true}).waitFor({timeout:20000});
  async function checkPageFit(width,height){
   await page.setViewportSize({width,height});
+  const exit=page.getByRole('link',{name:'Voltar ao MK-AUTH',exact:true});await exit.waitFor({state:'visible'});assert.equal(await exit.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(32, 156, 238)');
+  assert.equal(await exit.evaluate(el=>el.parentElement.className),width<768||height<=500?'evolution-header-actions':'evolution-tabs');
+  if(width>=768&&height>500)assert.equal(await exit.evaluate(el=>el.parentElement.firstElementChild===el),true);
   const geometry=await page.locator('iframe').evaluate(el=>{const r=el.getBoundingClientRect();return {x:r.x,right:r.right,bottom:r.bottom,height:r.height,viewport:innerWidth,viewHeight:innerHeight,overflow:getComputedStyle(document.documentElement).overflowY};});
   assert.equal(geometry.overflow,'hidden');assert.ok(Math.abs(geometry.x)<1);assert.ok(geometry.right<=width+1);assert.ok(Math.abs(geometry.bottom-height)<2);assert.ok(geometry.height>height*.7);
   if(width<768||height<=500){await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('link',{name:'Voltar ao MK-AUTH',exact:true}).waitFor({state:'visible'});await page.getByRole('button',{name:'Menu',exact:true}).click();}
