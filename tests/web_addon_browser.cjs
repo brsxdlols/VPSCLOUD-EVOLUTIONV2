@@ -26,6 +26,7 @@ const assert=require('assert/strict');
  await frame.getByText('CI_ONLY_NO_PHONE',{exact:true}).waitFor({timeout:20000});
  async function checkPageFit(width,height){
   await page.setViewportSize({width,height});
+  await page.waitForFunction(expected=>document.querySelector('.evolution-back').parentElement.className===expected,width<768||height<=500?'evolution-header-actions':'evolution-tabs');
   const exit=page.getByRole('link',{name:'Voltar ao MK-AUTH',exact:true});await exit.waitFor({state:'visible'});assert.equal(await exit.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(32, 156, 238)');
   assert.equal(await exit.evaluate(el=>el.parentElement.className),width<768||height<=500?'evolution-header-actions':'evolution-tabs');
   if(width>=768&&height>500)assert.equal(await exit.evaluate(el=>el.parentElement.firstElementChild===el),true);
